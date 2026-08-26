@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Тест · занятие {{ lesson.number }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.lesson', number=lesson.number) }}">Занятие {{ lesson.number }}</a> · тест</p>
+<section class="hero-card compact">
+  <div>
+    <h1>Тест по теории</h1>
+    <p class="muted">{{ questions|length }} заданий. Чтобы открыть практическую часть, нужно {{ pass_percent|int }}%. Верных ответов может быть несколько — это указано в условии.</p>
+  </div>
+  {% if attempts %}
+  <p class="muted">Попыток: {{ attempts|length }}{% if state.progress.test_best_score is not none %} · лучший результат {{ state.progress.test_best_score }}%{% endif %}</p>
+  {% endif %}
+</section>
+
+<form method="post" class="quiz">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for item in questions %}
+  <fieldset class="card q-card" data-multi="{{ 1 if item.q.multi else 0 }}">
+    <legend>
+      <span class="q-num">{{ item.q.code }}</span>
+      {% if item.q.topic %}<span class="q-topic">{{ item.q.topic }}</span>{% endif %}
+      {% if item.q.multi %}
+      <span class="pill">несколько верных</span>
+      {% else %}
+      <span class="pill">один верный</span>
+      {% endif %}
+    </legend>
+    <div class="q-prompt md-body">{{ item.prompt_html|safe }}</div>
+    <div class="opts">
+      {% for letter, html in item.options %}
+      <label class="opt">
+        {% if item.q.multi %}
+        <input type="checkbox" name="{{ item.q.code }}" value="{{ letter }}">
+        {% else %}
+        <input type="radio" name="{{ item.q.code }}" value="{{ letter }}">
+        {% endif %}
+        <span><b>{{ letter }})</b> <span class="md-body">{{ html|safe }}</span></span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+  <div class="sticky-actions">
+    <button class="btn btn-primary" type="submit">Отправить попытку</button>
+  </div>
+</form>
+{% endblock %}

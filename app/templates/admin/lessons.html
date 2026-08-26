@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Занятия{% endblock %}
+{% block content %}
+<section class="hero-card compact">
+  <div>
+    <h1>Доступ к занятиям</h1>
+    <p class="muted">Можно открыть или закрыть занятие сразу всем ученикам. Точечно — в карточке ученика.</p>
+  </div>
+</section>
+<div class="table-wrap card">
+  <table>
+    <thead><tr><th>№</th><th>Тема</th><th>Раздел</th><th>Открыто</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.lesson.number }}</td>
+        <td>{{ r.lesson.title }}</td>
+        <td>{{ r.lesson.section }}</td>
+        <td>{{ r.open_n }} / {{ r.total }}</td>
+        <td class="nowrap">
+          <form method="post" action="{{ url_for('admin.lessons_access', number=r.lesson.number) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="open">
+            <button class="btn btn-primary btn-sm" type="submit">Всем открыть</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.lessons_access', number=r.lesson.number) }}" class="inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="close">
+            <button class="btn btn-ghost btn-sm" type="submit">Всем закрыть</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

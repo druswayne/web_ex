@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Кабинет{% endblock %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Личный кабинет</p>
+    <h1>{{ current_user.full_name }}</h1>
+    <p class="muted">Уровень заданий: <strong>{{ level_label }}</strong>. В практике — самостоятельная работа и домашнее задание.</p>
+  </div>
+  {% if current %}
+  <a class="btn btn-primary" href="{{ url_for('student.lesson', number=current[0].number) }}">
+    Продолжить занятие {{ current[0].number }}
+  </a>
+  {% endif %}
+</section>
+
+<div class="stat-grid">
+  <article class="stat">
+    <span>Пройдено</span>
+    <strong>{{ done }} / {{ lesson_count }}</strong>
+    <div class="bar"><i style="width: {{ (100 * done / lesson_count) if lesson_count else 0 }}%"></i></div>
+  </article>
+  <article class="stat">
+    <span>Открыто занятий</span>
+    <strong>{{ unlocked }}</strong>
+  </article>
+  <article class="stat">
+    <span>Средний балл теста</span>
+    <strong>{% if avg_test is not none %}{{ avg_test }}%{% else %}—{% endif %}</strong>
+    <small>{% if best_test is not none %}лучший {{ best_test }}% · {{ test_count }} попыток{% else %}ещё не сдавали{% endif %}</small>
+  </article>
+  <article class="stat">
+    <span>Практическая часть</span>
+    <strong>{{ practice_correct }}{% if practice_total %} / {{ practice_total }}{% endif %}</strong>
+    <small>засчитанных заданий</small>
+  </article>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Карта курса</h2>
+    <p class="muted">Первое занятие открыто сразу. Следующие открываются после 80% практической части или учителем.</p>
+  </div>
+  <div class="lesson-grid">
+    {% for lsn in lessons %}
+      {% set st = states[lsn.number] %}
+      {% if st.unlocked %}
+      <a class="lesson-tile {{ st.stage }}" href="{{ url_for('student.lesson', number=lsn.number) }}">
+      {% else %}
+      <div class="lesson-tile locked">
+      {% endif %}
+        <b>{{ lsn.number }}</b>
+        <span>{{ lsn.title }}</span>
+        <em>
+          {% if st.stage == 'done' %}готово
+          {% elif st.stage == 'practice' %}практика
+          {% elif st.stage == 'test' %}тест
+          {% elif st.stage == 'theory' %}теория
+          {% else %}закрыто{% endif %}
+        </em>
+      {% if st.unlocked %}</a>{% else %}</div>{% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+<div class="split">
+  <section class="card">
+    <div class="card-head">
+      <h2>Достижения</h2>
+      <p class="muted">{{ earned_n }} из {{ achievements|length }}</p>
+    </div>
+    <ul class="ach-list">
+      {% for a in achievements %}
+      <li class="{% if a.earned %}on{% endif %}">
+        <strong>{{ a.title }}</strong>
+        <span>{{ a.description }}</span>
+        {% if a.earned %}<small>{{ a.earned.earned_at|dt }}</small>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  <section class="card">
+    <div class="card-head">
+      <h2>Последние тесты</h2>
+    </div>
+    {% if recent_tests %}
+    <ul class="plain-list">
+      {% for t in recent_tests %}
+      <li>
+        <a href="{{ url_for('student.test_result', number=t.lesson_number, attempt_id=t.id) }}">
+          Занятие {{ t.lesson_number }} · попытка {{ t.attempt_no }}
+        </a>
+        <span class="pill {% if t.passed %}ok{% else %}bad{% endif %}">{{ t.score }}%</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">Пока нет попыток. Начните с теории первого занятия.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

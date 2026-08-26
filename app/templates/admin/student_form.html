@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{% if user %}Профиль{% else %}Новый ученик{% endif %}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('admin.students') }}">Ученики</a></p>
+<section class="card form-card">
+  <h1>{% if user %}Изменить профиль{% else %}Новый ученик{% endif %}</h1>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Имя
+      <input type="text" name="full_name" value="{{ user.full_name if user else '' }}" required>
+    </label>
+    <label>Логин
+      <input type="text" name="username" value="{{ user.username if user else '' }}" required autocomplete="off">
+    </label>
+    <label>Пароль{% if user %} <span class="muted">(оставьте пустым, чтобы не менять)</span>{% endif %}
+      <input type="text" name="password" {% if not user %}required{% endif %} autocomplete="off">
+    </label>
+    <label>Уровень заданий
+      <select name="level_band">
+        {% for b in LEVEL_BANDS %}
+        <option value="{{ b }}" {% if level_band == b %}selected{% endif %}>{{ LEVEL_LABELS[b] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if user %}
+    <label class="check">
+      <input type="checkbox" name="is_active" value="1" {% if user.is_active %}checked{% endif %}>
+      Аккаунт активен
+    </label>
+    <p class="muted">Если сменить уровень, уже засчитанные задания практики останутся со старым уровнем. Нерешённые заменятся заданиями нового уровня.</p>
+    {% endif %}
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+</section>
+{% endblock %}

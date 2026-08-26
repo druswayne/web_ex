@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Занятие {{ lesson.number }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.dashboard') }}">Кабинет</a> · занятие {{ lesson.number }}</p>
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">{{ lesson.section }}{% if lesson.date_label %} · {{ lesson.date_label }}{% endif %}</p>
+    <h1>Занятие {{ lesson.number }}. {{ lesson.title }}</h1>
+    {% if lesson.subtopics %}
+    <p class="muted">{{ lesson.subtopics|join(' · ') }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card goals-card">
+  <div class="card-head">
+    <div>
+      <h2>Цели занятия</h2>
+      <p class="muted">К концу занятия вы сможете</p>
+    </div>
+    <span class="pill">{{ lesson.goals|length }} умений</span>
+  </div>
+  <ol class="goals-grid">
+    {% for g in lesson.goals %}
+    <li>
+      <span class="goal-n" aria-hidden="true">{{ loop.index }}</span>
+      <div class="goal-text md-body">{{ g.rstrip(';')|md }}</div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<div class="path">
+  <a class="path-card" href="{{ url_for('student.theory', number=lesson.number) }}">
+    <b>1</b>
+    <div>
+      <h3>Теория</h3>
+      <p>{% if state.theory %}Прочитана{% else %}Читайте до конца страницы — откроется тест{% endif %}</p>
+    </div>
+    <span class="pill {% if state.theory %}ok{% endif %}">{% if state.theory %}готово{% else %}открыто{% endif %}</span>
+  </a>
+
+  {% if state.theory %}
+  <a class="path-card" href="{{ url_for('student.test', number=lesson.number) }}">
+  {% else %}
+  <div class="path-card disabled">
+  {% endif %}
+    <b>2</b>
+    <div>
+      <h3>Тест по теории</h3>
+      <p>
+        {% if state.test %}Сдан{% if state.progress.test_best_score is not none %} · лучший результат {{ state.progress.test_best_score }}%{% endif %}
+        {% elif state.theory %}Нужно набрать 80%
+        {% else %}Откроется после теории{% endif %}
+      </p>
+    </div>
+    <span class="pill {% if state.test %}ok{% elif not state.theory %}lock{% endif %}">
+      {% if state.test %}готово{% elif state.theory %}доступен{% else %}закрыт{% endif %}
+    </span>
+  {% if state.theory %}</a>{% else %}</div>{% endif %}
+
+  {% if state.test %}
+  <a class="path-card" href="{{ url_for('student.practice', number=lesson.number) }}">
+  {% else %}
+  <div class="path-card disabled">
+  {% endif %}
+    <b>3</b>
+    <div>
+      {% set p_ok = state.progress.practice_correct or 0 %}
+      {% set p_all = state.progress.practice_total or 0 %}
+      {% set p_pct = ((100 * p_ok / p_all)|round|int) if p_all else 0 %}
+      <h3>Практическая часть</h3>
+      <p>
+        {% if state.practice %}Пройдена, следующее занятие открыто
+        {% elif state.test %}Самостоятельная работа и ДЗ вашего уровня. Нужно {{ config.PRACTICE_PASS_PERCENT|int }}%
+        {% else %}Откроется после теста{% endif %}
+      </p>
+      {% if state.test and p_all %}
+      <p class="path-progress">Решено {{ p_ok }} из {{ p_all }} · {{ p_pct }}%</p>
+      <div class="bar"><i style="width: {{ p_pct }}%"></i></div>
+      {% endif %}
+    </div>
+    <span class="pill {% if state.practice %}ok{% elif not state.test %}lock{% endif %}">
+      {% if state.practice %}готово{% elif state.test %}доступна{% else %}закрыта{% endif %}
+    </span>
+  {% if state.test %}</a>{% else %}</div>{% endif %}
+</div>
+{% endblock %}
