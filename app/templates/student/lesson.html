@@ -20,10 +20,10 @@
     </div>
     <span class="pill">{{ lesson.goals|length }} умений</span>
   </div>
-  <ol class="goals-grid">
+  <ol class="goals-list">
     {% for g in lesson.goals %}
     <li>
-      <span class="goal-n" aria-hidden="true">{{ loop.index }}</span>
+      <span class="goal-mark" aria-hidden="true"></span>
       <div class="goal-text md-body">{{ g.rstrip(';')|md }}</div>
     </li>
     {% endfor %}

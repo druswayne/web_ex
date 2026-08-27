@@ -15,8 +15,8 @@
 <form method="post" class="quiz">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% for item in questions %}
-  <fieldset class="card q-card" data-multi="{{ 1 if item.q.multi else 0 }}">
-    <legend>
+  <fieldset class="card q-card" data-multi="{{ 1 if item.q.multi else 0 }}" aria-labelledby="qhead-{{ item.q.code }}">
+    <div class="q-head" id="qhead-{{ item.q.code }}">
       <span class="q-num">{{ item.q.code }}</span>
       {% if item.q.topic %}<span class="q-topic">{{ item.q.topic }}</span>{% endif %}
       {% if item.q.multi %}
@@ -24,7 +24,7 @@
       {% else %}
       <span class="pill">один верный</span>
       {% endif %}
-    </legend>
+    </div>
     <div class="q-prompt md-body">{{ item.prompt_html|safe }}</div>
     <div class="opts">
       {% for letter, html in item.options %}
