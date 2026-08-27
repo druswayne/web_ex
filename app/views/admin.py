@@ -111,7 +111,7 @@ def student_new():
         if not username or not password or not full_name:
             flash("Заполните логин, пароль и имя.", "warning")
             return render_template("admin/student_form.html", user=None, level_band=level_band)
-        if User.query.filter_by(username=username).first():
+        if User.username_taken(username):
             flash("Такой логин уже занят.", "danger")
             return render_template("admin/student_form.html", user=None, level_band=level_band)
         if level_band not in LEVEL_BANDS:
@@ -147,8 +147,7 @@ def student_edit(user_id: int):
         if not full_name or not username:
             flash("Имя и логин обязательны.", "warning")
             return render_template("admin/student_form.html", user=user, level_band=level_band)
-        other = User.query.filter(User.username == username, User.id != user.id).first()
-        if other:
+        if User.username_taken(username, exclude_id=user.id):
             flash("Такой логин уже занят.", "danger")
             return render_template("admin/student_form.html", user=user, level_band=level_band)
         old_level = user.level_band

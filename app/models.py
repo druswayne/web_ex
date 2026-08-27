@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -50,6 +51,26 @@ class User(UserMixin, db.Model):
 
     def check_password(self, raw: str) -> bool:
         return check_password_hash(self.password_hash, raw)
+
+    @staticmethod
+    def normalize_username(value: str) -> str:
+        return (value or "").strip().casefold()
+
+    @classmethod
+    def find_by_username(cls, value: str) -> User | None:
+        key = cls.normalize_username(value)
+        if not key:
+            return None
+        matches = cls.query.filter(func.lower(cls.username) == key).all()
+        if matches:
+            return matches[0]
+        # SQLite LOWER() не трогает кириллицу — добираем в Python.
+        return next((u for u in cls.query.all() if u.username.casefold() == key), None)
+
+    @classmethod
+    def username_taken(cls, value: str, exclude_id: int | None = None) -> bool:
+        user = cls.find_by_username(value)
+        return user is not None and user.id != exclude_id
 
     @property
     def is_admin(self) -> bool:

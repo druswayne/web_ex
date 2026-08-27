@@ -26,7 +26,7 @@ def login():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
-        user = User.query.filter_by(username=username).first()
+        user = User.find_by_username(username)
         if user and user.is_active and user.check_password(password):
             login_user(user, remember=True)
             user.last_login_at = utcnow()
