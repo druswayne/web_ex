@@ -72,7 +72,7 @@
       <h3>Практическая часть</h3>
       <p>
         {% if state.practice %}Пройдена, следующее занятие открыто
-        {% elif state.test %}Самостоятельная работа и ДЗ вашего уровня. Нужно {{ config.PRACTICE_PASS_PERCENT|int }}%
+        {% elif state.test %}Самостоятельная работа и домашнее задание. Нужно {{ config.PRACTICE_PASS_PERCENT|int }}%
         {% else %}Откроется после теста{% endif %}
       </p>
       {% if state.test and p_all %}

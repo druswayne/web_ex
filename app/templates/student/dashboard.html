@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Личный кабинет</p>
     <h1>{{ current_user.full_name }}</h1>
-    <p class="muted">Уровень заданий: <strong>{{ level_label }}</strong>. В практике — самостоятельная работа и домашнее задание.</p>
+    <p class="muted">В практике — самостоятельная работа и домашнее задание.</p>
   </div>
   {% if current %}
   <a class="btn btn-primary" href="{{ url_for('student.lesson', number=current[0].number) }}">

@@ -23,7 +23,7 @@ from ..check_jobs import (
     start_practice_check,
     sweep_stale_pending,
 )
-from ..config import LEVEL_LABELS, UPLOADS_DIR
+from ..config import UPLOADS_DIR
 from ..content import display_prompt, get_bank, render_markdown
 from ..models import (
     PracticeAttempt,
@@ -116,7 +116,6 @@ def dashboard():
         earned_n=len(earned_codes),
         current=current,
         recent_tests=recent_tests,
-        level_label=LEVEL_LABELS.get(current_user.level_band or "", current_user.level_band),
     )
 
 
@@ -243,7 +242,7 @@ def practice(number: int):
     if current is None:
         current = next((r for r in rows if not r.is_correct), None) or (rows[0] if rows else None)
     if current is None:
-        flash("Для вашего уровня пока нет заданий практической части.", "warning")
+        flash("Для практической части пока нет заданий.", "warning")
         return redirect(url_for("student.lesson", number=number))
     pending_ids = pending_assignment_ids([r.id for r in rows])
     current_pending = current.id in pending_ids
