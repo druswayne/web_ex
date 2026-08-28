@@ -1,11 +1,18 @@
 from __future__ import annotations
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import or_
 
 from ..config import LEVEL_BANDS, LEVEL_LABELS
-from ..content import get_bank, render_markdown
+from ..content import HOMEWORK_SLOT_BASE, get_bank, normalize_band, render_markdown
+from ..content_edit import (
+    questions_from_form,
+    save_practice_band,
+    save_test_band,
+    save_theory,
+    tasks_from_form,
+)
 from ..models import (
     ActivityLog,
     LessonAccess,
@@ -22,6 +29,7 @@ from ..progress import (
     log_activity,
     refresh_practice_progress,
     set_access,
+    sync_assignments_after_content_change,
     sync_assignments_after_level_change,
 )
 from . import admin_required
@@ -46,6 +54,9 @@ ACTION_LABELS = {
     "achievement": "Получено достижение",
     "profile_updated": "Профиль изменён",
     "student_created": "Ученик создан",
+    "content_theory": "Изменена теория занятия",
+    "content_test": "Изменён тест занятия",
+    "content_practice": "Изменена практика занятия",
 }
 
 
@@ -257,7 +268,225 @@ def lessons_access(number: int):
         f"Занятие {number} {'открыто' if unlocked else 'закрыто'} для всех учеников.",
         "success",
     )
+    if request.form.get("next") == "detail":
+        return redirect(url_for("admin.lesson_detail", number=number))
     return redirect(url_for("admin.lessons"))
+
+
+def _admin_lesson(number: int):
+    try:
+        return get_bank().get(number)
+    except KeyError:
+        abort(404)
+
+
+def _admin_band(band: str) -> str:
+    key = normalize_band(band)
+    if key not in LEVEL_BANDS:
+        abort(404)
+    return key
+
+
+@bp.route("/lessons/<int:number>")
+@admin_required
+def lesson_detail(number: int):
+    lsn = _admin_lesson(number)
+    test_counts = {b: len(lsn.test_for(b)) for b in LEVEL_BANDS}
+    practice_counts = {b: len(lsn.practice.get(b) or []) for b in LEVEL_BANDS}
+    return render_template(
+        "admin/lesson_detail.html",
+        lesson=lsn,
+        test_counts=test_counts,
+        practice_counts=practice_counts,
+        theory_chars=len(lsn.theory_body),
+    )
+
+
+@bp.route("/lessons/<int:number>/theory", methods=["GET", "POST"])
+@admin_required
+def lesson_theory(number: int):
+    lsn = _admin_lesson(number)
+    if request.method == "POST":
+        body = request.form.get("theory_md") or ""
+        try:
+            save_theory(number, body)
+        except OSError:
+            flash("Не удалось сохранить файл занятия.", "danger")
+            return render_template("admin/lesson_theory.html", lesson=lsn, theory_md=body)
+        log_activity(
+            current_user.id,
+            "content_theory",
+            lesson_number=number,
+            actor_id=current_user.id,
+        )
+        db.session.commit()
+        flash("Теория сохранена.", "success")
+        return redirect(url_for("admin.lesson_detail", number=number))
+    return render_template("admin/lesson_theory.html", lesson=lsn, theory_md=lsn.theory_body)
+
+
+@bp.route("/lessons/<int:number>/test")
+@admin_required
+def lesson_test_pick(number: int):
+    lsn = _admin_lesson(number)
+    counts = {b: len(lsn.test_for(b)) for b in LEVEL_BANDS}
+    return render_template(
+        "admin/lesson_band_pick.html",
+        lesson=lsn,
+        kind="test",
+        kind_title="Тест",
+        kind_hint="Выберите уровень, тест которого нужно изменить. Пока уровни не разделяли, у всех один и тот же набор вопросов.",
+        counts=counts,
+        count_unit="вопросов",
+        edit_endpoint="admin.lesson_test_edit",
+    )
+
+
+@bp.route("/lessons/<int:number>/test/<band>", methods=["GET", "POST"])
+@admin_required
+def lesson_test_edit(number: int, band: str):
+    lsn = _admin_lesson(number)
+    band = _admin_band(band)
+    if request.method == "POST":
+        questions = questions_from_form(request.form)
+        if not questions:
+            flash("Добавьте хотя бы один вопрос.", "warning")
+            return render_template(
+                "admin/lesson_test_edit.html",
+                lesson=lsn,
+                band=band,
+                questions=questions,
+            )
+        missing = [q.code for q in questions if not q.prompt_md or len(q.options) < 2 or not q.answers]
+        if missing:
+            flash(
+                "У каждого вопроса нужны формулировка, минимум два варианта и хотя бы один верный ответ.",
+                "warning",
+            )
+            return render_template(
+                "admin/lesson_test_edit.html",
+                lesson=lsn,
+                band=band,
+                questions=questions,
+            )
+        try:
+            save_test_band(number, band, questions)
+        except OSError:
+            flash("Не удалось сохранить файлы теста.", "danger")
+            return render_template(
+                "admin/lesson_test_edit.html",
+                lesson=lsn,
+                band=band,
+                questions=questions,
+            )
+        log_activity(
+            current_user.id,
+            "content_test",
+            lesson_number=number,
+            actor_id=current_user.id,
+            details={"band": band, "questions": len(questions)},
+        )
+        db.session.commit()
+        flash(f"Тест уровня {LEVEL_LABELS[band]} сохранён.", "success")
+        return redirect(url_for("admin.lesson_detail", number=number))
+    questions = lsn.test_for(band)
+    return render_template(
+        "admin/lesson_test_edit.html",
+        lesson=lsn,
+        band=band,
+        questions=questions,
+    )
+
+
+@bp.route("/lessons/<int:number>/practice")
+@admin_required
+def lesson_practice_pick(number: int):
+    lsn = _admin_lesson(number)
+    counts = {b: len(lsn.practice.get(b) or []) for b in LEVEL_BANDS}
+    return render_template(
+        "admin/lesson_band_pick.html",
+        lesson=lsn,
+        kind="practice",
+        kind_title="Практические задания",
+        kind_hint="Выберите уровень: самостоятельная работа и домашнее задание этого блока.",
+        counts=counts,
+        count_unit="заданий",
+        edit_endpoint="admin.lesson_practice_edit",
+    )
+
+
+@bp.route("/lessons/<int:number>/practice/<band>", methods=["GET", "POST"])
+@admin_required
+def lesson_practice_edit(number: int, band: str):
+    lsn = _admin_lesson(number)
+    band = _admin_band(band)
+    if request.method == "POST":
+        class_tasks = tasks_from_form(
+            request.form, "class", kind="class", letter="C", slot_base=0
+        )
+        homework_tasks = tasks_from_form(
+            request.form,
+            "hw",
+            kind="homework",
+            letter="D",
+            slot_base=HOMEWORK_SLOT_BASE,
+        )
+        if not class_tasks and not homework_tasks:
+            flash("Добавьте хотя бы одно задание.", "warning")
+            return render_template(
+                "admin/lesson_practice_edit.html",
+                lesson=lsn,
+                band=band,
+                class_tasks=class_tasks,
+                homework_tasks=homework_tasks,
+            )
+        try:
+            save_practice_band(number, band, class_tasks, homework_tasks)
+        except OSError:
+            flash("Не удалось сохранить файлы практики.", "danger")
+            return render_template(
+                "admin/lesson_practice_edit.html",
+                lesson=lsn,
+                band=band,
+                class_tasks=class_tasks,
+                homework_tasks=homework_tasks,
+            )
+        sync_assignments_after_content_change(number, band)
+        log_activity(
+            current_user.id,
+            "content_practice",
+            lesson_number=number,
+            actor_id=current_user.id,
+            details={
+                "band": band,
+                "class": len(class_tasks),
+                "homework": len(homework_tasks),
+            },
+        )
+        db.session.commit()
+        flash(f"Практика уровня {LEVEL_LABELS[band]} сохранена.", "success")
+        return redirect(url_for("admin.lesson_detail", number=number))
+    tasks = lsn.practice.get(band) or []
+    class_tasks = [t for t in tasks if t.kind != "homework"]
+    homework_tasks = [t for t in tasks if t.kind == "homework"]
+    return render_template(
+        "admin/lesson_practice_edit.html",
+        lesson=lsn,
+        band=band,
+        class_tasks=class_tasks,
+        homework_tasks=homework_tasks,
+    )
+
+
+@bp.route("/preview", methods=["POST"])
+@admin_required
+def markdown_preview():
+    source = ""
+    if request.is_json:
+        source = (request.get_json(silent=True) or {}).get("source") or ""
+    else:
+        source = request.form.get("source") or ""
+    return jsonify({"html": render_markdown(source)})
 
 
 @bp.route("/attempts/test/<int:attempt_id>")
@@ -266,7 +495,7 @@ def test_attempt(attempt_id: int):
     attempt = TestAttempt.query.get_or_404(attempt_id)
     student = db.session.get(User, attempt.user_id)
     lsn = get_bank().get(attempt.lesson_number)
-    questions = {q.code: q for q in lsn.test}
+    questions = {q.code: q for q in lsn.test_for(student.level_band if student else None)}
     rows = []
     for item in attempt.details or []:
         q = questions.get(item.get("code"))

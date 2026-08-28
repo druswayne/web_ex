@@ -147,9 +147,10 @@ def record_test_attempt(
 
     lesson = get_bank().get(lesson_number)
     percent = float(current_app.config.get("TEST_PASS_PERCENT") or 80)
+    questions = lesson.test_for(user.level_band)
     details = []
     correct = 0
-    for q in lesson.test:
+    for q in questions:
         selected = sorted(answers.get(q.code) or [])
         expected = sorted(q.answers)
         ok = selected == expected and bool(expected)
@@ -165,7 +166,7 @@ def record_test_attempt(
                 "multi": q.multi,
             }
         )
-    total = len(lesson.test) or 1
+    total = len(questions) or 1
     score = round(100.0 * correct / total, 1)
     passed = meets_percent(correct, total, percent)
     prev = (
@@ -281,6 +282,59 @@ def sync_assignments_after_level_change(user: User, new_band: str) -> None:
             )
         db.session.flush()
         refresh_practice_progress(user, lesson.number)
+
+
+def sync_assignments_after_content_change(lesson_number: int, band: str) -> None:
+    """Update unsolved practice copies after the teacher edits a level."""
+    lesson = get_bank().get(lesson_number)
+    tasks = lesson.practice.get(band) or []
+    by_code = {t.code: t for t in tasks}
+    rows = PracticeAssignment.query.filter_by(
+        lesson_number=lesson_number, level_band=band, is_active=True
+    ).all()
+    by_user: dict[int, list[PracticeAssignment]] = {}
+    for row in rows:
+        by_user.setdefault(row.user_id, []).append(row)
+    for user_id, user_rows in by_user.items():
+        user = db.session.get(User, user_id)
+        if user is None:
+            continue
+        progress = get_or_create_progress(user_id, lesson_number)
+        if progress.practice_passed_at:
+            continue
+        active_codes: set[str] = set()
+        for row in user_rows:
+            if row.is_correct:
+                active_codes.add(row.task_code)
+                continue
+            task = by_code.get(row.task_code)
+            if task is None:
+                row.is_active = False
+                row.replaced_at = utcnow()
+                continue
+            row.title = task.title
+            row.task_md = task.text_md
+            row.answer_text = task.answer
+            row.slot = task.slot
+            active_codes.add(row.task_code)
+        for task in tasks:
+            if task.code in active_codes:
+                continue
+            db.session.add(
+                PracticeAssignment(
+                    user_id=user_id,
+                    lesson_number=lesson_number,
+                    slot=task.slot,
+                    task_code=task.code,
+                    level_band=band,
+                    title=task.title,
+                    task_md=task.text_md,
+                    answer_text=task.answer,
+                    is_active=True,
+                )
+            )
+        db.session.flush()
+        refresh_practice_progress(user, lesson_number)
 
 
 def refresh_practice_progress(user: User, lesson_number: int) -> LessonProgress:

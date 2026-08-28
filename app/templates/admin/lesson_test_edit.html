@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Тест {{ LEVEL_LABELS[band] }} · занятие {{ lesson.number }}{% endblock %}
+{% block content %}
+<p class="crumb">
+  <a href="{{ url_for('admin.lessons') }}">Занятия</a> ·
+  <a href="{{ url_for('admin.lesson_detail', number=lesson.number) }}">занятие {{ lesson.number }}</a> ·
+  <a href="{{ url_for('admin.lesson_test_pick', number=lesson.number) }}">тест</a> ·
+  {{ LEVEL_LABELS[band] }}
+</p>
+<section class="hero-card compact">
+  <div>
+    <h1>Тест · {{ LEVEL_LABELS[band] }}</h1>
+    <p class="muted">Отметьте верные варианты. Если верных несколько, ученик увидит подсказку «несколько верных».</p>
+  </div>
+</section>
+<form method="post" class="editor-form" id="testEditor" data-letters="абвгд">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="q_count" id="qCount" value="{{ questions|length or 1 }}">
+  <div id="questionList">
+    {% for q in questions %}
+    {% with q=q, qi=loop.index %}
+    {% include "admin/_test_question.html" %}
+    {% endwith %}
+    {% else %}
+    {% with q=none, qi=1 %}
+    {% include "admin/_test_question.html" %}
+    {% endwith %}
+    {% endfor %}
+  </div>
+  <p><button class="btn btn-ghost" type="button" id="addQuestion">Добавить вопрос</button></p>
+  <div class="sticky-actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.lesson_test_pick', number=lesson.number) }}">К уровням</a>
+    <button class="btn btn-primary" type="submit">Сохранить тест</button>
+  </div>
+</form>
+<template id="questionTpl">{% with q=none, qi=1 %}{% include "admin/_test_question.html" %}{% endwith %}</template>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}

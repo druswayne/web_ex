@@ -3,8 +3,8 @@
 {% block content %}
 <section class="hero-card compact">
   <div>
-    <h1>Доступ к занятиям</h1>
-    <p class="muted">Можно открыть или закрыть занятие сразу всем ученикам. Точечно — в карточке ученика.</p>
+    <h1>Занятия</h1>
+    <p class="muted">Откройте занятие, чтобы править теорию, тест и практику. Доступ ученикам можно менять здесь или в карточке ученика.</p>
   </div>
 </section>
 <div class="table-wrap card">
@@ -14,14 +14,15 @@
       {% for r in rows %}
       <tr>
         <td>{{ r.lesson.number }}</td>
-        <td>{{ r.lesson.title }}</td>
+        <td><a href="{{ url_for('admin.lesson_detail', number=r.lesson.number) }}">{{ r.lesson.title }}</a></td>
         <td>{{ r.lesson.section }}</td>
         <td>{{ r.open_n }} / {{ r.total }}</td>
         <td class="nowrap">
+          <a class="btn btn-primary btn-sm" href="{{ url_for('admin.lesson_detail', number=r.lesson.number) }}">Материалы</a>
           <form method="post" action="{{ url_for('admin.lessons_access', number=r.lesson.number) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="open">
-            <button class="btn btn-primary btn-sm" type="submit">Всем открыть</button>
+            <button class="btn btn-ghost btn-sm" type="submit">Всем открыть</button>
           </form>
           <form method="post" action="{{ url_for('admin.lessons_access', number=r.lesson.number) }}" class="inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

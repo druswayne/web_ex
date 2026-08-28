@@ -175,8 +175,9 @@ def test(number: int):
         flash("Сначала дочитайте теорию до конца — тогда откроется тест.", "info")
         return redirect(url_for("student.theory", number=number))
     if request.method == "POST":
+        questions_src = lsn.test_for(current_user.level_band)
         answers: dict[str, list[str]] = {}
-        for q in lsn.test:
+        for q in questions_src:
             answers[q.code] = request.form.getlist(q.code)
         attempt = record_test_attempt(current_user, number, answers)
         db.session.commit()
@@ -194,7 +195,7 @@ def test(number: int):
             "prompt_html": render_markdown(display_prompt(q.prompt_md, q.multi)),
             "options": [(letter, render_markdown(text)) for letter, text in q.options],
         }
-        for q in lsn.test
+        for q in lsn.test_for(current_user.level_band)
     ]
     return render_template(
         "student/test.html",

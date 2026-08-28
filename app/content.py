@@ -151,13 +151,38 @@ class LessonContent:
     goals: list[str]
     theory_md: str
     practice: dict[str, list[PracticeTask]]
-    test: list[TestQuestion]
+    tests: dict[str, list[TestQuestion]]
     checklist: list[str] = field(default_factory=list)
     subtopics: list[str] = field(default_factory=list)
 
     @property
     def theory_html(self) -> Markup:
         return Markup(render_markdown(self.theory_md))
+
+    @property
+    def theory_body(self) -> str:
+        text = self.theory_md or ""
+        text = re.sub(r"^##\s+Теория к занятию\s*", "", text).strip()
+        return text
+
+    def test_for(self, band: str | None = None) -> list[TestQuestion]:
+        key = normalize_band(band or "")
+        if key in self.tests:
+            return self.tests[key]
+        for b in LEVEL_BANDS:
+            if self.tests.get(b):
+                return self.tests[b]
+        return []
+
+    @property
+    def test(self) -> list[TestQuestion]:
+        return self.test_for(None)
+
+    def practice_for(self, band: str | None = None) -> list[PracticeTask]:
+        key = normalize_band(band or "")
+        if key in self.practice:
+            return self.practice[key]
+        return self.practice.get("1-2") or []
 
 
 def _is_level_choice_goal(text: str) -> bool:
@@ -330,6 +355,25 @@ def _parse_options(body: str) -> tuple[str, list[tuple[str, str]]]:
     return prompt, options
 
 
+def _parse_tests_by_band(test_md: str, answers_md: str) -> dict[str, list[TestQuestion]]:
+    test_blocks = _split_level_blocks(test_md)
+    ans_blocks = _split_level_blocks(answers_md)
+    if not test_blocks:
+        shared = _parse_test(test_md, answers_md)
+        return {band: list(shared) for band in LEVEL_BANDS}
+    out: dict[str, list[TestQuestion]] = {}
+    for band in LEVEL_BANDS:
+        block = test_blocks.get(band, "")
+        answers = ans_blocks.get(band, "")
+        if not ans_blocks:
+            answers = answers_md
+        out[band] = _parse_test(block, answers) if block else []
+    for extra, block in test_blocks.items():
+        if extra not in out:
+            out[extra] = _parse_test(block, ans_blocks.get(extra, ""))
+    return out
+
+
 def _parse_test(test_md: str, answers_md: str) -> list[TestQuestion]:
     keys: dict[int, list[str]] = {}
     for m in TEST_ANS_RE.finditer(answers_md or ""):
@@ -442,7 +486,7 @@ def load_lesson(root: Path, number: int, meta: dict[str, Any] | None = None) -> 
         goals=_parse_goals(md),
         theory_md=theory,
         practice=practice,
-        test=_parse_test(test_md, test_ans),
+        tests=_parse_tests_by_band(test_md, test_ans),
         checklist=_parse_checklist(md),
         subtopics=list(meta.get("subtopics") or []),
     )

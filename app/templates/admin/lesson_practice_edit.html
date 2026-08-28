@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Практика {{ LEVEL_LABELS[band] }} · занятие {{ lesson.number }}{% endblock %}
+{% block content %}
+<p class="crumb">
+  <a href="{{ url_for('admin.lessons') }}">Занятия</a> ·
+  <a href="{{ url_for('admin.lesson_detail', number=lesson.number) }}">занятие {{ lesson.number }}</a> ·
+  <a href="{{ url_for('admin.lesson_practice_pick', number=lesson.number) }}">практика</a> ·
+  {{ LEVEL_LABELS[band] }}
+</p>
+<section class="hero-card compact">
+  <div>
+    <h1>Практика · {{ LEVEL_LABELS[band] }}</h1>
+    <p class="muted">Самостоятельная работа (С) и домашнее задание (Д). Эталон ответа виден только учителю и нужен для проверки.</p>
+  </div>
+</section>
+<form method="post" class="editor-form" id="practiceEditor">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="class_count" id="classCount" value="{{ class_tasks|length or 1 }}">
+  <input type="hidden" name="hw_count" id="hwCount" value="{{ homework_tasks|length or 1 }}">
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Самостоятельная работа</h2>
+      <button class="btn btn-ghost btn-sm" type="button" data-add-task="class">Добавить С</button>
+    </div>
+    <div id="classList" class="task-edit-list" data-prefix="class" data-letter="С">
+      {% for task in class_tasks %}
+      {% with prefix='class', idx=loop.index, letter='С' %}
+      {% include "admin/_practice_task.html" %}
+      {% endwith %}
+      {% else %}
+      {% with prefix='class', idx=1, letter='С', task=none %}
+      {% include "admin/_practice_task.html" %}
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Домашнее задание</h2>
+      <button class="btn btn-ghost btn-sm" type="button" data-add-task="hw">Добавить Д</button>
+    </div>
+    <div id="hwList" class="task-edit-list" data-prefix="hw" data-letter="Д">
+      {% for task in homework_tasks %}
+      {% with prefix='hw', idx=loop.index, letter='Д' %}
+      {% include "admin/_practice_task.html" %}
+      {% endwith %}
+      {% else %}
+      {% with prefix='hw', idx=1, letter='Д', task=none %}
+      {% include "admin/_practice_task.html" %}
+      {% endwith %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <div class="sticky-actions">
+    <a class="btn btn-ghost" href="{{ url_for('admin.lesson_practice_pick', number=lesson.number) }}">К уровням</a>
+    <button class="btn btn-primary" type="submit">Сохранить практику</button>
+  </div>
+</form>
+<template id="classTaskTpl">{% with prefix='class', idx=1, letter='С', task=none %}{% include "admin/_practice_task.html" %}{% endwith %}</template>
+<template id="hwTaskTpl">{% with prefix='hw', idx=1, letter='Д', task=none %}{% include "admin/_practice_task.html" %}{% endwith %}</template>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}
