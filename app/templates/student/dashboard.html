@@ -44,20 +44,55 @@
   <div class="lesson-grid">
     {% for lsn in lessons %}
       {% set st = states[lsn.number] %}
+      {% set p = st.progress %}
+      {% set th = 100 if st.theory else (p.theory_scroll_pct or 0) %}
+      {% set te = 100 if st.test else 0 %}
+      {% set pok = p.practice_correct or 0 %}
+      {% set pall = p.practice_total or 0 %}
+      {% set pr = 100 if st.practice else ((100 * pok / pall)|round|int if pall else 0) %}
+      {% set done_pct = ((th + te + pr) / 3)|round|int %}
+      {% set sc = success.get(lsn.number) %}
+      {% set ok_pct = sc.pct if sc else 0 %}
+      {% set steps = (1 if st.theory else 0) + (1 if st.test else 0) + (1 if st.practice else 0) %}
+      {% set nsub = lsn.subtopics|length %}
       {% if st.unlocked %}
-      <a class="lesson-tile {{ st.stage }}" href="{{ url_for('student.lesson', number=lsn.number) }}">
+      <a class="lesson-tile hue-{{ (lsn.number - 1) % 6 }} {{ st.stage }}" href="{{ url_for('student.lesson', number=lsn.number) }}">
       {% else %}
-      <div class="lesson-tile locked">
+      <div class="lesson-tile hue-{{ (lsn.number - 1) % 6 }} locked">
       {% endif %}
-        <b>{{ lsn.number }}</b>
-        <span>{{ lsn.title }}</span>
-        <em>
-          {% if st.stage == 'done' %}готово
-          {% elif st.stage == 'practice' %}практика
-          {% elif st.stage == 'test' %}тест
-          {% elif st.stage == 'theory' %}теория
-          {% else %}закрыто{% endif %}
-        </em>
+        <div class="tile-head">
+          <span class="tile-kicker">тема</span>
+          <b class="tile-num">{{ '%02d'|format(lsn.number) }}</b>
+        </div>
+        <strong class="tile-title">{{ lsn.title }}</strong>
+        <div class="tile-meters">
+          <div>
+            <span>пройдено {{ done_pct }}%</span>
+            <div class="tile-bar"><i style="width: {{ done_pct }}%"></i></div>
+          </div>
+          <div title="{% if sc %}{{ sc.ok }} из {{ sc.total }} попыток{% else %}пока нет попыток{% endif %}">
+            <span>успешность {{ ok_pct }}%</span>
+            <div class="tile-bar"><i style="width: {{ ok_pct }}%"></i></div>
+          </div>
+        </div>
+        <div class="tile-meta">
+          <span>
+            {% if pall %}{{ pok }} / {{ pall }}{% else %}{{ steps }} / 3{% endif %}
+            {% if nsub %}
+              · {{ nsub }}
+              {% if nsub % 10 == 1 and nsub % 100 != 11 %}подтема
+              {% elif nsub % 10 in [2, 3, 4] and nsub % 100 not in [12, 13, 14] %}подтемы
+              {% else %}подтем{% endif %}
+            {% endif %}
+          </span>
+          <em>
+            {% if st.stage == 'done' %}готово
+            {% elif st.stage == 'practice' %}практика
+            {% elif st.stage == 'test' %}тест
+            {% elif st.stage == 'theory' %}теория
+            {% else %}закрыто{% endif %}
+          </em>
+        </div>
       {% if st.unlocked %}</a>{% else %}</div>{% endif %}
     {% endfor %}
   </div>

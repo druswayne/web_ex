@@ -27,7 +27,12 @@
           <td>{{ row.lesson.number }}</td>
           <td>{{ row.lesson.title }}</td>
           <td>
-            {% if st.theory %}100%{% else %}{{ st.progress.theory_scroll_pct }}%{% endif %}
+            <div class="cell-stack">
+              <strong>{% if st.theory %}100%{% else %}{{ st.progress.theory_scroll_pct }}%{% endif %}</strong>
+              {% if st.progress.theory_read_seconds %}
+              <span class="muted">чтение {{ st.progress.theory_read_seconds|duration }}</span>
+              {% endif %}
+            </div>
           </td>
           <td>
             {% if row.tests %}

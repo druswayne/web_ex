@@ -38,6 +38,7 @@ from ..progress import (
     ensure_assignments,
     is_unlocked,
     lesson_state,
+    lesson_success_map,
     log_activity,
     mark_theory_progress,
     record_test_attempt,
@@ -116,6 +117,7 @@ def dashboard():
         earned_n=len(earned_codes),
         current=current,
         recent_tests=recent_tests,
+        success=lesson_success_map(current_user.id),
     )
 
 
@@ -146,9 +148,18 @@ def theory(number: int):
     st = lesson_state(current_user, number)
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
-        pct = int(data.get("pct") or 0)
+        try:
+            pct = int(data.get("pct") or 0)
+        except (TypeError, ValueError):
+            pct = 0
         completed = bool(data.get("completed"))
-        progress = mark_theory_progress(current_user, number, pct, completed)
+        try:
+            seconds = int(data.get("seconds") or 0)
+        except (TypeError, ValueError):
+            seconds = 0
+        progress = mark_theory_progress(
+            current_user, number, pct, completed, seconds=seconds
+        )
         db.session.commit()
         return jsonify(
             {

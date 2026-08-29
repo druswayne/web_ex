@@ -11,6 +11,7 @@ from .models import (
     LessonAccess,
     LessonProgress,
     PracticeAssignment,
+    PracticeAttempt,
     TestAttempt,
     User,
     UserAchievement,
@@ -116,6 +117,24 @@ def theory_done(progress: LessonProgress) -> bool:
     return progress.theory_completed_at is not None
 
 
+def format_duration(seconds: int | None) -> str:
+    n = int(seconds or 0)
+    if n <= 0:
+        return ""
+    if n < 60:
+        return f"{n} с"
+    minutes = int(round(n / 60))
+    if minutes < 60:
+        return f"{minutes} мин"
+    hours, minutes = divmod(minutes, 60)
+    if minutes:
+        return f"{hours} ч {minutes} мин"
+    return f"{hours} ч"
+
+
+_MAX_READ_TICK = 45
+
+
 def test_done(progress: LessonProgress) -> bool:
     return progress.test_passed_at is not None
 
@@ -124,15 +143,29 @@ def practice_done(progress: LessonProgress) -> bool:
     return progress.practice_passed_at is not None
 
 
-def mark_theory_progress(user: User, lesson_number: int, pct: int, completed: bool) -> LessonProgress:
+def mark_theory_progress(
+    user: User,
+    lesson_number: int,
+    pct: int,
+    completed: bool,
+    seconds: int = 0,
+) -> LessonProgress:
     progress = get_or_create_progress(user.id, lesson_number)
     pct = max(0, min(100, int(pct)))
     if pct > progress.theory_scroll_pct:
         progress.theory_scroll_pct = pct
+    add = max(0, min(_MAX_READ_TICK, int(seconds or 0)))
+    if add:
+        progress.theory_read_seconds = int(progress.theory_read_seconds or 0) + add
     if completed and not progress.theory_completed_at:
         progress.theory_completed_at = utcnow()
         progress.theory_scroll_pct = 100
-        log_activity(user.id, "theory_complete", lesson_number=lesson_number)
+        log_activity(
+            user.id,
+            "theory_complete",
+            lesson_number=lesson_number,
+            details={"read_seconds": progress.theory_read_seconds or 0},
+        )
         grant_achievements(user)
     progress.updated_at = utcnow()
     return progress
@@ -386,6 +419,53 @@ def lesson_state(user: User, lesson_number: int) -> dict[str, Any]:
     }
 
 
+_SKIP_VERDICTS = ("pending", "error", "unclear")
+
+
+def lesson_success_map(user_id: int) -> dict[int, dict[str, int]]:
+    """Доля удачных попыток теста и практики по занятиям.
+
+    Каждая сдача теста и каждая завершённая проверка фото — одна попытка.
+    Не считаем pending/error/unclear: это не успех и не ошибка ученика.
+    """
+    buckets: dict[int, list[int]] = {}
+
+    def _bump(lesson_number: int, ok: bool) -> None:
+        row = buckets.setdefault(lesson_number, [0, 0])
+        if ok:
+            row[0] += 1
+        else:
+            row[1] += 1
+
+    for t in TestAttempt.query.filter_by(user_id=user_id).all():
+        _bump(t.lesson_number, bool(t.passed))
+
+    practice_rows = (
+        db.session.query(PracticeAttempt.is_correct, PracticeAssignment.lesson_number)
+        .join(PracticeAssignment, PracticeAttempt.assignment_id == PracticeAssignment.id)
+        .filter(
+            PracticeAttempt.user_id == user_id,
+            PracticeAttempt.ai_verdict.notin_(_SKIP_VERDICTS),
+        )
+        .all()
+    )
+    for is_correct, lesson_number in practice_rows:
+        _bump(lesson_number, bool(is_correct))
+
+    out: dict[int, dict[str, int]] = {}
+    for number, (ok, fail) in buckets.items():
+        total = ok + fail
+        if not total:
+            continue
+        out[number] = {
+            "ok": ok,
+            "fail": fail,
+            "total": total,
+            "pct": int(round(100 * ok / total)),
+        }
+    return out
+
+
 ACHIEVEMENTS = [
     ("first_theory", "Первая теория", "Прочитана теория первого занятия"),
     ("first_test", "Теоретик", "Сдан первый тест на 80% и выше"),
@@ -401,8 +481,6 @@ ACHIEVEMENTS = [
 
 
 def grant_achievements(user: User) -> None:
-    from .models import PracticeAttempt
-
     if not user.is_student:
         return
     have = {a.code for a in UserAchievement.query.filter_by(user_id=user.id).all()}

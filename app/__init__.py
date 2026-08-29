@@ -11,7 +11,7 @@ from markupsafe import Markup
 
 from .config import Config, INSTANCE_DIR, PROJECT_ROOT, UPLOADS_DIR, WEB_ROOT
 from .content import get_bank, render_markdown
-from .models import User, db
+from .models import User, db, ensure_schema
 
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -57,6 +57,12 @@ def create_app() -> Flask:
             value = value.replace(tzinfo=timezone.utc)
         local = value.astimezone()
         return local.strftime("%d.%m.%Y %H:%M")
+
+    @app.template_filter("duration")
+    def duration_filter(seconds: int | None) -> str:
+        from .progress import format_duration
+
+        return format_duration(seconds)
 
     @app.context_processor
     def inject_globals():
@@ -108,6 +114,7 @@ def create_app() -> Flask:
 
     with app.app_context():
         db.create_all()
+        ensure_schema()
         _ensure_bootstrap()
 
     return app

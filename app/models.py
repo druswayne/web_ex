@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import DeclarativeBase
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -102,6 +102,7 @@ class LessonProgress(db.Model):
     lesson_number = db.Column(db.Integer, nullable=False, index=True)
     theory_scroll_pct = db.Column(db.Integer, nullable=False, default=0)
     theory_completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    theory_read_seconds = db.Column(db.Integer, nullable=False, default=0)
     test_best_score = db.Column(db.Float, nullable=True)
     test_passed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     practice_correct = db.Column(db.Integer, nullable=False, default=0)
@@ -192,3 +193,19 @@ class UserAchievement(db.Model):
     title = db.Column(db.String(120), nullable=False)
     description = db.Column(db.String(255), nullable=False, default="")
     earned_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+def ensure_schema() -> None:
+    """Добавляет колонки, которых нет в уже существующей базе."""
+    inspector = inspect(db.engine)
+    if "lesson_progress" not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns("lesson_progress")}
+    if "theory_read_seconds" not in cols:
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE lesson_progress "
+                    "ADD COLUMN theory_read_seconds INTEGER DEFAULT 0"
+                )
+            )

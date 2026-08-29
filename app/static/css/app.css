@@ -93,18 +93,66 @@ h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
 .bar { height: 8px; background: #efe6d8; border-radius: 99px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), #7bc4b8); }
 .bar-lg { height: 10px; }
-.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .lesson-tile {
-  display: flex; flex-direction: column; gap: 6px; min-height: 118px;
-  padding: 14px; border-radius: 16px; border: 1px solid var(--line);
-  background: #fff; color: inherit; text-decoration: none;
+  --tile: #1a7a72;
+  --tile-soft: #e8f3f1;
+  position: relative;
+  display: flex; flex-direction: column; gap: 12px; min-height: 228px;
+  padding: 16px 16px 14px; border-radius: 18px;
+  border: 1px solid #ece4d8; border-top: 3px solid var(--tile);
+  background: linear-gradient(180deg, var(--tile-soft) 0%, #fff 40%);
+  color: inherit; text-decoration: none;
+  box-shadow: 0 8px 22px rgba(27, 42, 50, 0.06);
 }
-.lesson-tile:hover { border-color: var(--teal); text-decoration: none; }
-.lesson-tile b { font-size: 1.2rem; }
-.lesson-tile span { color: var(--ink); font-size: 13px; line-height: 1.3; }
-.lesson-tile em { font-style: normal; color: var(--muted); font-size: 12px; }
-.lesson-tile.done { background: #eef8f2; border-color: #cfe8d9; }
-.lesson-tile.locked { opacity: .55; background: #f3eee6; }
+.lesson-tile.hue-0 { --tile: #1a7a72; --tile-soft: #e7f3f1; }
+.lesson-tile.hue-1 { --tile: #c9a227; --tile-soft: #f8f0d8; }
+.lesson-tile.hue-2 { --tile: #243e66; --tile-soft: #e8edf4; }
+.lesson-tile.hue-3 { --tile: #6a5a8c; --tile-soft: #f0ebf6; }
+.lesson-tile.hue-4 { --tile: #5f7d4a; --tile-soft: #eef3e8; }
+.lesson-tile.hue-5 { --tile: #8a3d3d; --tile-soft: #f6eaea; }
+a.lesson-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(27, 42, 50, 0.1);
+  text-decoration: none;
+}
+.tile-head { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.tile-kicker {
+  font-size: 11px; font-weight: 800; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--tile);
+}
+.tile-num {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--tile); color: #fff;
+  font-size: 14px; font-weight: 800; letter-spacing: .02em;
+}
+.tile-title {
+  font-size: 15px; font-weight: 800; line-height: 1.28; letter-spacing: -0.02em;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden; min-height: 3.8em;
+}
+.tile-meters {
+  margin-top: auto;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.tile-meters span {
+  display: block; color: var(--muted); font-size: 11px; font-weight: 700;
+  margin-bottom: 6px; white-space: nowrap;
+}
+.tile-bar {
+  height: 4px; background: #efe8dc; border-radius: 99px; overflow: hidden;
+}
+.tile-bar i { display: block; height: 100%; width: 0; background: var(--tile); border-radius: 99px; }
+.tile-meta {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  color: var(--muted); font-size: 12px;
+}
+.tile-meta em { font-style: normal; font-weight: 700; color: var(--tile); }
+.lesson-tile.locked {
+  opacity: .58; filter: grayscale(.15);
+  background: linear-gradient(180deg, #f3eee6 0%, #f7f3ec 40%);
+}
 .split { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
 .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .ach-list, .plain-list, .timeline, .result-list, .attempt-feed { list-style: none; padding: 0; margin: 0; }
@@ -474,8 +522,10 @@ input, select, textarea {
   .upload-submit { max-width: none; }
   .photo-actions { flex-direction: column; align-items: stretch; }
   .photo-preview-wrap, #photoPreview, .thumb img { max-width: 100%; }
-  .lesson-grid { grid-template-columns: repeat(2, 1fr); }
-  .lesson-tile { min-height: 104px; padding: 12px; }
+  .lesson-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .lesson-tile { min-height: 0; padding: 14px 12px 12px; }
+  .tile-title { font-size: 14px; min-height: 3.5em; }
+  .tile-meters { gap: 8px; }
   .search { flex-direction: column; }
   .search .btn { width: 100%; }
   .table-wrap.card { padding: 0; }
