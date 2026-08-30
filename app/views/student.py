@@ -28,12 +28,10 @@ from ..content import display_prompt, get_bank, render_markdown
 from ..models import (
     PracticeAttempt,
     TestAttempt,
-    UserAchievement,
     db,
     utcnow,
 )
 from ..progress import (
-    ACHIEVEMENTS,
     active_assignments,
     ensure_assignments,
     is_unlocked,
@@ -77,19 +75,6 @@ def dashboard():
     best_test = max((t.score for t in tests), default=None)
     practice_correct = sum(p.practice_correct or 0 for p in progresses)
     practice_total = sum(p.practice_total or 0 for p in progresses)
-    earned = UserAchievement.query.filter_by(user_id=current_user.id).order_by(
-        UserAchievement.earned_at.desc()
-    ).all()
-    earned_codes = {a.code for a in earned}
-    catalog = [
-        {
-            "code": code,
-            "title": title,
-            "description": desc,
-            "earned": next((a for a in earned if a.code == code), None),
-        }
-        for code, title, desc in ACHIEVEMENTS
-    ]
     current = None
     for lsn in bank.all():
         st = states[lsn.number]
@@ -113,8 +98,6 @@ def dashboard():
         test_count=len(tests),
         practice_correct=practice_correct,
         practice_total=practice_total,
-        achievements=catalog,
-        earned_n=len(earned_codes),
         current=current,
         recent_tests=recent_tests,
         success=lesson_success_map(current_user.id),
@@ -282,7 +265,7 @@ def practice(number: int):
         next_task=next_task,
         pass_percent=current_app.config["PRACTICE_PASS_PERCENT"],
         ai_ready=ai_configured(),
-        task_html=render_markdown(f"**{current.title}**\n\n{current.task_md}"),
+        task_html=render_markdown(current.task_md),
         status_url=url_for("student.practice_status", number=number, task=current.id),
     )
 

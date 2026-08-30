@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+import shutil
+
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy import or_
 
-from ..config import LEVEL_BANDS, LEVEL_LABELS
+from ..config import LEVEL_BANDS, LEVEL_LABELS, UPLOADS_DIR
 from ..content import HOMEWORK_SLOT_BASE, get_bank, normalize_band, render_markdown
 from ..content_edit import (
     questions_from_form,
@@ -36,6 +39,42 @@ from . import admin_required
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
+MIN_PASSWORD_LEN = 6
+
+
+def _delete_student(user: User) -> Path | None:
+    uid = user.id
+    ActivityLog.query.filter(ActivityLog.actor_id == uid).update(
+        {ActivityLog.actor_id: None}, synchronize_session=False
+    )
+    PracticeAttempt.query.filter_by(user_id=uid).delete(synchronize_session=False)
+    db.session.delete(user)
+    folder = UPLOADS_DIR / "practice" / str(uid)
+    return folder if folder.is_dir() else None
+
+
+def _change_admin_password() -> bool:
+    current = request.form.get("current_password") or ""
+    new = request.form.get("new_password") or ""
+    confirm = request.form.get("new_password2") or ""
+    if not current_user.check_password(current):
+        flash("Текущий пароль неверный.", "danger")
+        return False
+    if len(new) < MIN_PASSWORD_LEN:
+        flash(f"Новый пароль — не короче {MIN_PASSWORD_LEN} символов.", "warning")
+        return False
+    if new != confirm:
+        flash("Новый пароль и подтверждение не совпадают.", "warning")
+        return False
+    if current_user.check_password(new):
+        flash("Новый пароль совпадает с текущим.", "warning")
+        return False
+    current_user.set_password(new)
+    log_activity(current_user.id, "password_changed", actor_id=current_user.id)
+    db.session.commit()
+    flash("Пароль изменён.", "success")
+    return True
+
 ACTION_LABELS = {
     "login": "Вход на сайт",
     "lesson_open": "Открыл занятие",
@@ -54,10 +93,20 @@ ACTION_LABELS = {
     "achievement": "Получено достижение",
     "profile_updated": "Профиль изменён",
     "student_created": "Ученик создан",
+    "student_deleted": "Ученик удалён",
+    "password_changed": "Пароль изменён",
     "content_theory": "Изменена теория занятия",
     "content_test": "Изменён тест занятия",
     "content_practice": "Изменена практика занятия",
 }
+
+
+@bp.route("/profile", methods=["GET", "POST"])
+@admin_required
+def profile():
+    if request.method == "POST" and _change_admin_password():
+        return redirect(url_for("admin.profile"))
+    return render_template("admin/profile.html")
 
 
 @bp.route("/")
@@ -181,6 +230,26 @@ def student_edit(user_id: int):
         flash("Профиль сохранён.", "success")
         return redirect(url_for("admin.student_detail", user_id=user.id))
     return render_template("admin/student_form.html", user=user, level_band=user.level_band)
+
+
+@bp.route("/students/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def student_delete(user_id: int):
+    user = User.query.filter_by(id=user_id, role="student").first_or_404()
+    name = user.full_name
+    username = user.username
+    log_activity(
+        current_user.id,
+        "student_deleted",
+        actor_id=current_user.id,
+        details={"username": username, "full_name": name, "id": user.id},
+    )
+    upload_dir = _delete_student(user)
+    db.session.commit()
+    if upload_dir is not None:
+        shutil.rmtree(upload_dir, ignore_errors=True)
+    flash(f"Аккаунт «{name}» удалён.", "success")
+    return redirect(url_for("admin.students"))
 
 
 @bp.route("/students/<int:user_id>")

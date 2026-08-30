@@ -5,7 +5,7 @@
   <div>
     <p class="eyebrow">Личный кабинет</p>
     <h1>{{ current_user.full_name }}</h1>
-    <p class="muted">В практике — самостоятельная работа и домашнее задание.</p>
+    <p class="muted">В практике — самостоятельная работа.</p>
   </div>
   {% if current %}
   <a class="btn btn-primary" href="{{ url_for('student.lesson', number=current[0].number) }}">
@@ -98,40 +98,23 @@
   </div>
 </section>
 
-<div class="split">
-  <section class="card">
-    <div class="card-head">
-      <h2>Достижения</h2>
-      <p class="muted">{{ earned_n }} из {{ achievements|length }}</p>
-    </div>
-    <ul class="ach-list">
-      {% for a in achievements %}
-      <li class="{% if a.earned %}on{% endif %}">
-        <strong>{{ a.title }}</strong>
-        <span>{{ a.description }}</span>
-        {% if a.earned %}<small>{{ a.earned.earned_at|dt }}</small>{% endif %}
-      </li>
-      {% endfor %}
-    </ul>
-  </section>
-  <section class="card">
-    <div class="card-head">
-      <h2>Последние тесты</h2>
-    </div>
-    {% if recent_tests %}
-    <ul class="plain-list">
-      {% for t in recent_tests %}
-      <li>
-        <a href="{{ url_for('student.test_result', number=t.lesson_number, attempt_id=t.id) }}">
-          Занятие {{ t.lesson_number }} · попытка {{ t.attempt_no }}
-        </a>
-        <span class="pill {% if t.passed %}ok{% else %}bad{% endif %}">{{ t.score }}%</span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="muted">Пока нет попыток. Начните с теории первого занятия.</p>
-    {% endif %}
-  </section>
-</div>
+<section class="card">
+  <div class="card-head">
+    <h2>Последние тесты</h2>
+  </div>
+  {% if recent_tests %}
+  <ul class="plain-list">
+    {% for t in recent_tests %}
+    <li>
+      <a href="{{ url_for('student.test_result', number=t.lesson_number, attempt_id=t.id) }}">
+        Занятие {{ t.lesson_number }} · попытка {{ t.attempt_no }}
+      </a>
+      <span class="pill {% if t.passed %}ok{% else %}bad{% endif %}">{{ t.score }}%</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Пока нет попыток. Начните с теории первого занятия.</p>
+  {% endif %}
+</section>
 {% endblock %}

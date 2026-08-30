@@ -5,7 +5,7 @@
 <section class="hero-card compact">
   <div>
     <h1>Практическая часть</h1>
-    <p class="muted">Самостоятельная работа и домашнее задание, по одному. Решайте в тетради, фотографируйте и отправляйте на проверку. Чтобы открыть следующее занятие, нужно {{ pass_percent|int }}% засчитанных заданий.</p>
+    <p class="muted">Решайте в тетради, фотографируйте и отправляйте на проверку. Чтобы открыть следующее занятие, нужно {{ pass_percent|int }}% засчитанных заданий.</p>
   </div>
   <div class="stat mini">
     <span>Прогресс</span>
@@ -22,7 +22,7 @@
 </nav>
 
 <article class="paper">
-  <p class="eyebrow">{{ current.task_code }}{% if current.task_code.startswith('D') %} · домашнее задание{% endif %}{% if current.is_correct %} · засчитано{% endif %}</p>
+  <p class="eyebrow">{{ current.task_code }}{% if current.is_correct %} · засчитано{% endif %}</p>
   <div class="md-body">{{ task_html|safe }}</div>
 </article>
 

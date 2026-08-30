@@ -32,4 +32,14 @@
     <button class="btn btn-primary" type="submit">Сохранить</button>
   </form>
 </section>
+{% if user %}
+<section class="card form-card danger-card">
+  <h2>Удалить аккаунт</h2>
+  <p class="muted">Прогресс, тесты и результаты практики будут стёрты. Это нельзя отменить.</p>
+  <form method="post" action="{{ url_for('admin.student_delete', user_id=user.id) }}" onsubmit="return confirm({{ ('Удалить аккаунт «' ~ user.full_name ~ '»? Прогресс и результаты будут стёрты безвозвратно.')|tojson }});">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-danger" type="submit">Удалить аккаунт</button>
+  </form>
+</section>
+{% endif %}
 {% endblock %}

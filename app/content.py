@@ -18,6 +18,10 @@ LEVEL_HEAD_RE = re.compile(
     r"^###\s+Уровень\s+(1[–-]2|3[–-]4|5[–-]6|7[–-]8|9[–-]10)\s+балл",
     re.M,
 )
+WALK_COLLECTION_HEAD_RE = re.compile(
+    r"^(###\s+Р\d+)\.\s*Сборник,\s*вариант\s+\d+,\s*задание\s+\d+\.?\s*$",
+    re.M | re.I,
+)
 TASK_SPLIT_RE = re.compile(r"(?=\*\*[СД]\d+\.)")
 TASK_HEAD_RE = re.compile(r"^\*\*([СД](\d+)\.(?:[^*]|\*(?!\*))*)\*\*\s*", re.S)
 NUM_TASK_SPLIT_RE = re.compile(r"(?m)(?=^\d+\.\s)")
@@ -96,6 +100,10 @@ def _protect_math(text: str) -> tuple[str, dict[str, str]]:
     return text, store
 
 
+def strip_walk_collection_heads(text: str) -> str:
+    return WALK_COLLECTION_HEAD_RE.sub(r"\1.", text or "")
+
+
 def render_markdown(source: str) -> str:
     if not (source or "").strip():
         return ""
@@ -157,7 +165,7 @@ class LessonContent:
 
     @property
     def theory_html(self) -> Markup:
-        return Markup(render_markdown(self.theory_md))
+        return Markup(render_markdown(strip_walk_collection_heads(self.theory_md)))
 
     @property
     def theory_body(self) -> str:
@@ -430,7 +438,7 @@ def load_lesson(root: Path, number: int, meta: dict[str, Any] | None = None) -> 
         ["## Самостоятельная работа"],
     )
     if theory:
-        theory = "## Теория к занятию\n\n" + theory
+        theory = "## Теория к занятию\n\n" + strip_walk_collection_heads(theory)
     class_block = _section_after(
         md,
         "## Самостоятельная работа",

@@ -4,7 +4,7 @@
 <p class="crumb"><a href="{{ url_for('admin.lessons') }}">Занятия</a> · занятие {{ lesson.number }}</p>
 <section class="hero-card">
   <div>
-    <p class="eyebrow">{{ lesson.section }}{% if lesson.date_label %} · {{ lesson.date_label }}{% endif %}</p>
+    <p class="eyebrow">{{ lesson.section }}</p>
     <h1>Занятие {{ lesson.number }}. {{ lesson.title }}</h1>
     <p class="muted">Выберите, что изменить: теорию, тест или практические задания.</p>
   </div>

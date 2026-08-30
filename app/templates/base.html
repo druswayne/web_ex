@@ -27,13 +27,18 @@
         <a href="{{ url_for('admin.dashboard') }}">Сводка</a>
         <a href="{{ url_for('admin.students') }}">Ученики</a>
         <a href="{{ url_for('admin.lessons') }}">Занятия</a>
+        <a href="{{ url_for('admin.profile') }}">Кабинет</a>
       {% elif current_user.is_authenticated %}
         <a href="{{ url_for('student.dashboard') }}">Кабинет</a>
       {% endif %}
     </nav>
     {% if current_user.is_authenticated %}
     <div class="who">
+      {% if current_user.is_admin %}
+      <a class="who-name" href="{{ url_for('admin.profile') }}">{{ current_user.full_name }}</a>
+      {% else %}
       <span>{{ current_user.full_name }}</span>
+      {% endif %}
       <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.logout') }}">Выйти</a>
     </div>
     {% endif %}

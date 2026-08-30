@@ -72,8 +72,17 @@ h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
 .btn:hover { text-decoration: none; transform: translateY(-1px); }
 .btn-primary { background: var(--teal); color: #fff; }
 .btn-ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn-danger { background: var(--bad); color: #fff; }
 .btn-sm { padding: 6px 10px; font-size: 13px; }
 .btn-block { width: 100%; }
+.who-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+  color: inherit; font-weight: 700;
+}
+.who-name:hover { text-decoration: none; color: var(--teal-dark); }
+.danger-card { border-color: #f3c9c6; background: #fdf6f4; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; align-items: center; }
+.hero-actions form { margin: 0; }
 .card, .paper, .hero-card, .stat, .auth-card {
   background: var(--paper); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--shadow);
@@ -490,6 +499,8 @@ input, select, textarea {
   .who { width: 100%; justify-content: space-between; }
   .hero-card { flex-direction: column; align-items: flex-start; padding: 20px; }
   .hero-card.compact { padding: 16px; }
+  .hero-actions { width: 100%; }
+  .hero-actions .btn { width: 100%; }
   .stat.mini { text-align: left; min-width: 0; }
   .auth-side, .auth-form { padding: 24px; }
   .timeline time { min-width: 0; }

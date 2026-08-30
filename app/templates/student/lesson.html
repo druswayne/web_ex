@@ -4,7 +4,7 @@
 <p class="crumb"><a href="{{ url_for('student.dashboard') }}">Кабинет</a> · занятие {{ lesson.number }}</p>
 <section class="hero-card">
   <div>
-    <p class="eyebrow">{{ lesson.section }}{% if lesson.date_label %} · {{ lesson.date_label }}{% endif %}</p>
+    <p class="eyebrow">{{ lesson.section }}</p>
     <h1>Занятие {{ lesson.number }}. {{ lesson.title }}</h1>
     {% if lesson.subtopics %}
     <p class="muted">{{ lesson.subtopics|join(' · ') }}</p>
@@ -72,7 +72,7 @@
       <h3>Практическая часть</h3>
       <p>
         {% if state.practice %}Пройдена, следующее занятие открыто
-        {% elif state.test %}Самостоятельная работа и домашнее задание. Нужно {{ config.PRACTICE_PASS_PERCENT|int }}%
+        {% elif state.test %}Нужно {{ config.PRACTICE_PASS_PERCENT|int }}% засчитанных заданий
         {% else %}Откроется после теста{% endif %}
       </p>
       {% if state.test and p_all %}
