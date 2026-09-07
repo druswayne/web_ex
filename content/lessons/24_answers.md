@@ -29,7 +29,7 @@
 ### Уровень 7–8 баллов
 
 С1. $BC=2\sqrt{61}$ см; тупоугольный  
-С2. $\cos\alpha=\frac45$; $\alpha\approx36,87^\circ$  
+С2. $\cos\alpha=\frac45$, $\alpha\approx36.87^\circ$  
 С3. $84$ см²  
 С4. $42$ см²  
 С5. $(2;5)$
@@ -85,7 +85,7 @@
 ### Уровень 9–10 баллов
 
 Д1. $BC=3\sqrt7$ см; $27\sqrt3$ см²  
-Д2. $\cos\alpha=\frac57$; $\cos\beta=\frac{19}{35}$; $\cos\gamma=\frac{5}{21}$  
+Д2. $\cos\alpha=\frac57$, $\cos\beta=\frac{19}{35}$, $\cos\gamma=\frac{5}{21}$  
 Д3. $60$ см²  
 Д4. $96$ см²; $48$ см²  
 Д5. $12$ ч  
