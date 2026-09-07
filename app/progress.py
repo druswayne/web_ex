@@ -247,13 +247,39 @@ def active_assignments(user_id: int, lesson_number: int) -> list[PracticeAssignm
     return rows
 
 
+def _copy_task_fields(row: PracticeAssignment, task) -> bool:
+    """Подтянуть формулировку из файла урока, не трогая зачёт."""
+    changed = False
+    if row.title != task.title:
+        row.title = task.title
+        changed = True
+    if row.task_md != task.text_md:
+        row.task_md = task.text_md
+        changed = True
+    if (row.answer_text or "") != (task.answer or ""):
+        row.answer_text = task.answer or ""
+        changed = True
+    if row.slot != task.slot:
+        row.slot = task.slot
+        changed = True
+    return changed
+
+
 def ensure_assignments(user: User, lesson_number: int) -> list[PracticeAssignment]:
     existing = active_assignments(user.id, lesson_number)
     progress = get_or_create_progress(user.id, lesson_number)
     lesson = get_bank().get(lesson_number)
     band = user.level_band or "1-2"
     tasks = lesson.practice.get(band) or lesson.practice.get("1-2") or []
+    by_code = {t.code: t for t in tasks}
+    changed = False
+    for row in existing:
+        task = by_code.get(row.task_code)
+        if task and _copy_task_fields(row, task):
+            changed = True
     if existing and progress.practice_passed_at:
+        if changed:
+            db.session.flush()
         return existing
     have = {r.task_code for r in existing}
     added = False
@@ -334,10 +360,18 @@ def sync_assignments_after_content_change(lesson_number: int, band: str) -> None
             continue
         progress = get_or_create_progress(user_id, lesson_number)
         if progress.practice_passed_at:
+            for row in user_rows:
+                task = by_code.get(row.task_code)
+                if task:
+                    _copy_task_fields(row, task)
+            db.session.flush()
             continue
         active_codes: set[str] = set()
         for row in user_rows:
+            task = by_code.get(row.task_code)
             if row.is_correct:
+                if task:
+                    _copy_task_fields(row, task)
                 active_codes.add(row.task_code)
                 continue
             task = by_code.get(row.task_code)
