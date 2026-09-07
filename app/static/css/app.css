@@ -22,6 +22,10 @@ img, svg, video { max-width: 100%; height: auto; }
   max-width: 100%;
   padding-bottom: 4px;
 }
+/* lang=ru иначе подменяет десятичную точку на запятую в формулах */
+.katex {
+  font-feature-settings: "locl" 0;
+}
 .md-body, .q-prompt, .opt { overflow-wrap: break-word; }
 .md-body table {
   display: block;

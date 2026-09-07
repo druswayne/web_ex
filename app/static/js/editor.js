@@ -2,17 +2,15 @@
   const LETTERS = ["а", "б", "в", "г", "д"];
   const csrf = window.csrfToken || "";
 
-  const mathOpts = {
-    delimiters: [
-      { left: "$$", right: "$$", display: true },
-      { left: "$", right: "$", display: false },
-    ],
-    throwOnError: false,
-  };
-
   const paintMath = (el) => {
     if (!el || !window.renderMathInElement) return;
-    window.renderMathInElement(el, mathOpts);
+    window.renderMathInElement(el, window.katexAutoOpts || {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "$", right: "$", display: false },
+      ],
+      throwOnError: false,
+    });
   };
 
   const bindPreview = () => {

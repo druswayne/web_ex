@@ -37,6 +37,8 @@ HOMEWORK_SLOT_BASE = 100
 ANS_LETTER = {"С": "C", "Д": "D"}
 MATH_BLOCK_RE = re.compile(r"\$\$.*?\$\$", re.S)
 MATH_INLINE_RE = re.compile(r"(?<!\$)\$(?!\$)(?:\\.|[^$\\])+\$")
+# В math `.` — пунктуация: `$2.5$` рисуется как «2, 5». `{.}` оставляет точку дроби.
+DECIMAL_DOT_RE = re.compile(r"(\d)\.(\d)")
 try:
     MD = markdown.Markdown(
         extensions=["tables", "fenced_code", "sane_lists", "nl2br", "pymdownx.tilde"],
@@ -87,12 +89,16 @@ def _section_after(text: str, start: str, stops: list[str]) -> str:
     return rest[:cut].strip()
 
 
+def _decimal_dot_ordinary(math: str) -> str:
+    return DECIMAL_DOT_RE.sub(r"\1{.}\2", math)
+
+
 def _protect_math(text: str) -> tuple[str, dict[str, str]]:
     store: dict[str, str] = {}
 
     def hold(m: re.Match[str]) -> str:
         key = f"@@MATH{len(store)}@@"
-        store[key] = m.group(0)
+        store[key] = _decimal_dot_ordinary(m.group(0))
         return key
 
     text = MATH_BLOCK_RE.sub(hold, text)
