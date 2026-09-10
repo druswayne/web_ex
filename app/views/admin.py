@@ -551,11 +551,19 @@ def lesson_practice_edit(number: int, band: str):
 @admin_required
 def markdown_preview():
     source = ""
+    decorate = False
     if request.is_json:
-        source = (request.get_json(silent=True) or {}).get("source") or ""
+        data = request.get_json(silent=True) or {}
+        source = data.get("source") or ""
+        decorate = bool(data.get("decorate_theory"))
     else:
         source = request.form.get("source") or ""
-    return jsonify({"html": render_markdown(source)})
+        decorate = (request.form.get("decorate_theory") or "").strip() in {
+            "1",
+            "true",
+            "True",
+        }
+    return jsonify({"html": render_markdown(source, decorate_theory=decorate)})
 
 
 @bp.route("/attempts/test/<int:attempt_id>")

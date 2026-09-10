@@ -15,11 +15,11 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="split-editor">
     <label class="editor-pane">Текст
-      <textarea name="theory_md" class="editor-md" id="theorySource" rows="28" data-preview-target="theoryPreview" data-preview-url="{{ url_for('admin.markdown_preview') }}">{{ theory_md }}</textarea>
+      <textarea name="theory_md" class="editor-md" id="theorySource" rows="28" data-preview-target="theoryPreview" data-preview-url="{{ url_for('admin.markdown_preview') }}" data-preview-mode="theory">{{ theory_md }}</textarea>
     </label>
     <div class="editor-pane">
       <span>Предпросмотр</span>
-      <div class="preview-pane md-body" id="theoryPreview"></div>
+      <div class="preview-pane md-body theory-article" id="theoryPreview"></div>
     </div>
   </div>
   <div class="sticky-actions">

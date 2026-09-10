@@ -26,11 +26,15 @@
             "Content-Type": "application/json",
             "X-CSRFToken": csrf,
           },
-          body: JSON.stringify({ source: src.value || "" }),
+          body: JSON.stringify({
+            source: src.value || "",
+            decorate_theory: src.dataset.previewMode === "theory",
+          }),
         })
           .then((res) => res.json())
           .then((data) => {
             target.innerHTML = data.html || "";
+            window.foldTheorySolutions?.(target);
             paintMath(target);
           })
           .catch(() => {

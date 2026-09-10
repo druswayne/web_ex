@@ -26,16 +26,16 @@
 С1. $R=5\text{ см}$  
 С2. $14\text{ см}$  
 С3. $34\text{ см}$  
-С4. $\sin\alpha=\frac5{13}$, $\tg\alpha=\frac5{12}$, $\ctg\alpha=\frac{12}{5}$  
+С4. $\sin\alpha=\frac5{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 С5. $6\text{ см}$  
 С6. $9$  
 С7. $27$
 
 ### Уровень 7–8 баллов
 
-С1. $\sin\alpha=\frac35$, $\cos\alpha=\frac45$, $\tg\alpha=\frac34$, $\ctg\alpha=\frac43$  
+С1. $\sin\alpha=\frac35$; $\cos\alpha=\frac45$; $\tg\alpha=\frac34$; $\ctg\alpha=\frac43$  
 С2. $12\sqrt3\text{ см}$; $24\text{ см}$  
-С3. $\sin\alpha=\frac7{25}$, $\cos\alpha=\frac{24}{25}$  
+С3. $\sin\alpha=\frac7{25}$; $\cos\alpha=\frac{24}{25}$  
 С4. $-\frac{\sqrt2}{2}-\frac12$  
 С5. $21\sqrt3\text{ см}^2$  
 С6. $-\frac32<x<\frac12$
@@ -43,8 +43,8 @@
 ### Уровень 9–10 баллов
 
 С1. $15\text{ см};20\text{ см};25\text{ см};\sin\alpha=\frac35$  
-С2. $\sin\alpha=\frac45$, $\cos\alpha=\frac35$, $\tg\alpha=\frac43$, $\ctg\alpha=\frac34$  
-С3. $\cos\alpha=\frac{12}{13}$, $\tg\alpha=\frac5{12}$, $\ctg\alpha=\frac{12}{5}$  
+С2. $\sin\alpha=\frac45$; $\cos\alpha=\frac35$; $\tg\alpha=\frac43$; $\ctg\alpha=\frac34$  
+С3. $\cos\alpha=\frac{12}{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 С4. $-\frac{\sqrt3}{2}+\frac{\sqrt2}{2}-\frac{\sqrt3}{3}$  
 С5. $30\sqrt3\text{ см}^2$; $13\text{ см}$  
 С6. $x=4$, $x>4$  
@@ -74,9 +74,9 @@
 
 ### Уровень 5–6 баллов
 
-Д1. $\sin\alpha=\frac7{25}$, $\cos\alpha=\frac{24}{25}$  
+Д1. $\sin\alpha=\frac7{25}$; $\cos\alpha=\frac{24}{25}$  
 Д2. $10\text{ см};10\sqrt3\text{ см}$  
-Д3. $\sin\alpha=\frac5{13}$, $\tg\alpha=\frac5{12}$, $\ctg\alpha=\frac{12}{5}$  
+Д3. $\sin\alpha=\frac5{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 Д4. $\frac{\sqrt3-1}{2}$  
 Д5. $10\text{ см};25\text{ см}$  
 Д6. $16$  
@@ -84,9 +84,9 @@
 
 ### Уровень 7–8 баллов
 
-Д1. $\sin\alpha=\frac5{13}$, $\cos\alpha=\frac{12}{13}$, $\tg\alpha=\frac5{12}$, $\ctg\alpha=\frac{12}{5}$  
+Д1. $\sin\alpha=\frac5{13}$; $\cos\alpha=\frac{12}{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 Д2. $2\sqrt3\text{ см};4\sqrt3\text{ см}$  
-Д3. $\sin\alpha=\frac5{13}$, $\cos\alpha=\frac{12}{13}$  
+Д3. $\sin\alpha=\frac5{13}$; $\cos\alpha=\frac{12}{13}$  
 Д4. $-\frac{\sqrt2+1}{2}$  
 Д5. $45\text{ см}^2$  
 Д6. $-\frac32<x<\frac12$  
@@ -96,7 +96,7 @@
 
 Д1. $15\text{ см};36\text{ см};39\text{ см};\sin\alpha=\frac5{13};\cos\alpha=\frac{12}{13}$  
 Д2. $12\text{ см};20\text{ см};12\text{ см};120\text{ см}^2$  
-Д3. $\cos\alpha=\frac{12}{13}$, $\tg\alpha=\frac5{12}$, $\ctg\alpha=\frac{12}{5}$  
+Д3. $\cos\alpha=\frac{12}{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 Д4. $\frac{\sqrt3}{2}+\frac{\sqrt2}{2}-\frac{\sqrt3}{3}$  
 Д5. $30\sqrt3\text{ см}^2$; $17\text{ см}$  
 Д6. $x=6$, $x>4$  

@@ -90,6 +90,7 @@ def _section_after(text: str, start: str, stops: list[str]) -> str:
 
 
 def _decimal_dot_ordinary(math: str) -> str:
+    math = math.replace("{,}", ".")
     return DECIMAL_DOT_RE.sub(r"\1{.}\2", math)
 
 
@@ -110,7 +111,7 @@ def strip_walk_collection_heads(text: str) -> str:
     return WALK_COLLECTION_HEAD_RE.sub(r"\1.", text or "")
 
 
-def render_markdown(source: str) -> str:
+def render_markdown(source: str, *, decorate_theory: bool = False) -> str:
     if not (source or "").strip():
         return ""
     text = source.replace("](figures/", "](/media/figures/")
@@ -119,7 +120,141 @@ def render_markdown(source: str) -> str:
     html = MD.convert(text)
     for key, val in store.items():
         html = html.replace(key, val)
+    if decorate_theory:
+        html = decorate_theory_html(html)
     return html
+
+
+HEAD_RE = re.compile(r"<h([2-4])(?:\s[^>]*)?>.*?</h\1>", re.S | re.I)
+TAG_RE = re.compile(r"<[^>]+>")
+SKIP_HEAD_RE = re.compile(
+    r"^(?:[а-яёa-z]\)|\d+[\.)]|первый\b|второй\b|третий\b)",
+    re.I,
+)
+THEORY_H2_RE = re.compile(
+    r"<h2(?:\s[^>]*)?>\s*Теория к занятию\s*</h2>\s*",
+    re.I,
+)
+MATH_PARA_RE = re.compile(r"<p>\s*(\$\$(?:\\.|[^$])+\$\$)\s*</p>", re.S)
+LEAD_P_RE = re.compile(
+    r"<p>(\s*<(?:strong|em)>(Условие|Решение|Ответ|Дано)[:.]?\s*</(?:strong|em)>)",
+    re.I,
+)
+LABEL_ONLY_P_RE = re.compile(
+    r"<p>\s*<(strong|em)>([^<]+)</\1>\s*(?:<br\s*/?>)?\s*</p>",
+    re.I,
+)
+LEAD_NAMES = {"условие", "решение", "ответ", "дано"}
+KIND_RULES: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"ловушк", re.I), "trap"),
+    (re.compile(r"нельзя путать", re.I), "warn"),
+    (re.compile(r"формул|зависимост", re.I), "formula"),
+    (re.compile(r"определен", re.I), "definition"),
+    (re.compile(r"теорем", re.I), "theorem"),
+    (re.compile(r"аксиом", re.I), "axiom"),
+    (re.compile(r"свойств", re.I), "property"),
+    (re.compile(r"признак", re.I), "feature"),
+    (re.compile(r"следстви", re.I), "corollary"),
+    (re.compile(r"алгоритм|построен", re.I), "algorithm"),
+    (re.compile(r"правил", re.I), "rule"),
+    (re.compile(r"простыми словами", re.I), "plain"),
+    (re.compile(r"^факт", re.I), "fact"),
+    (re.compile(r"замечан", re.I), "note"),
+    (re.compile(r"доказательств", re.I), "proof"),
+    (re.compile(r"^дано\b|^условие\b", re.I), "given"),
+    (re.compile(r"^решение\b", re.I), "solve"),
+    (re.compile(r"^ответ\b", re.I), "answer"),
+    (re.compile(r"разбор ключевых|ключев\w+\s+задан", re.I), "examples"),
+    (re.compile(r"самопроверк|мини-проверк|мини-практик", re.I), "check"),
+    (re.compile(r"набор для практики|разреш[её]нн", re.I), "check"),
+    (re.compile(r"итог|памятк|сводка", re.I), "summary"),
+    (re.compile(r"^как\b|^чтобы\b", re.I), "algorithm"),
+    (re.compile(r"пример", re.I), "example"),
+    (re.compile(r"^р\d+|^\s*задани", re.I), "example"),
+]
+LEAD_KIND = {
+    "условие": "given",
+    "дано": "given",
+    "решение": "solve",
+    "ответ": "answer",
+}
+
+
+def _plain_heading(html: str) -> str:
+    inner = re.sub(r"^<h[2-4](?:\s[^>]*)?>|</h[2-4]>$", "", html.strip(), flags=re.I)
+    text = TAG_RE.sub("", inner)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def classify_theory_heading(level: int, title: str) -> str | None:
+    raw = (title or "").strip()
+    if not raw:
+        return None
+    if level == 2 and raw.lower().startswith("теория"):
+        return None
+    if re.search(r"мини-тема", raw, re.I):
+        return None
+    for rx, kind in KIND_RULES:
+        if rx.search(raw):
+            return kind
+    if level == 4 and not SKIP_HEAD_RE.match(raw):
+        return "aside"
+    return None
+
+
+def _promote_label_headings(html: str) -> str:
+    def repl(m: re.Match[str]) -> str:
+        label = re.sub(r"\s+", " ", m.group(2)).strip()
+        key = re.sub(r"[.:]\s*$", "", label).strip().lower()
+        if key in LEAD_NAMES:
+            return m.group(0)
+        return f"<h4>{label}</h4>"
+
+    return LABEL_ONLY_P_RE.sub(repl, html)
+
+
+def decorate_theory_html(html: str) -> str:
+    if not (html or "").strip():
+        return html or ""
+    html = THEORY_H2_RE.sub("", html, count=1)
+    html = _promote_label_headings(html)
+    marks = list(HEAD_RE.finditer(html))
+    headings: list[dict[str, Any]] = []
+    for m in marks:
+        level = int(m.group(1))
+        title = _plain_heading(m.group(0))
+        kind = classify_theory_heading(level, title)
+        headings.append({"start": m.start(), "level": level, "kind": kind})
+    events: list[tuple[int, int, int, str, str]] = []
+    for i, h in enumerate(headings):
+        if not h["kind"]:
+            continue
+        wrap_end = len(html)
+        for nxt in headings[i + 1 :]:
+            if nxt["level"] <= h["level"]:
+                wrap_end = nxt["start"]
+                break
+        events.append((h["start"], 1, h["level"], "open", h["kind"]))
+        events.append((wrap_end, 0, -h["level"], "close", h["kind"]))
+    events.sort(key=lambda e: (e[0], e[1], e[2]))
+    out: list[str] = []
+    last = 0
+    for pos, _phase, _tie, action, kind in events:
+        out.append(html[last:pos])
+        if action == "open":
+            out.append(f'<section class="tbox tbox-{kind}">')
+        else:
+            out.append("</section>")
+        last = pos
+    out.append(html[last:])
+    html = "".join(out)
+    html = MATH_PARA_RE.sub(r'<div class="t-math">\1</div>', html)
+
+    def lead_class(m: re.Match[str]) -> str:
+        kind = LEAD_KIND.get(m.group(2).lower(), "aside")
+        return f'<p class="t-lead t-lead-{kind}">{m.group(1)}'
+
+    return LEAD_P_RE.sub(lead_class, html)
 
 
 MULTI_LEADIN_RE = re.compile(
@@ -171,7 +306,12 @@ class LessonContent:
 
     @property
     def theory_html(self) -> Markup:
-        return Markup(render_markdown(strip_walk_collection_heads(self.theory_md)))
+        return Markup(
+            render_markdown(
+                strip_walk_collection_heads(self.theory_md),
+                decorate_theory=True,
+            )
+        )
 
     @property
     def theory_body(self) -> str:
