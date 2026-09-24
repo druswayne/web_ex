@@ -171,6 +171,34 @@ def mark_theory_progress(
     return progress
 
 
+def mark_theory_video(
+    user: User,
+    lesson_number: int,
+    *,
+    watched: float,
+    duration: float,
+) -> LessonProgress:
+    progress = get_or_create_progress(user.id, lesson_number)
+    if progress.theory_video_completed_at:
+        return progress
+    dur = float(duration or 0)
+    seen = float(watched or 0)
+    if dur < 1 or seen < 0:
+        return progress
+    need = min(dur * 0.92, max(0.0, dur - 0.4))
+    if seen + 0.05 < need:
+        return progress
+    progress.theory_video_completed_at = utcnow()
+    progress.updated_at = utcnow()
+    log_activity(
+        user.id,
+        "theory_video_complete",
+        lesson_number=lesson_number,
+        details={"watched": round(seen, 1), "duration": round(dur, 1)},
+    )
+    return progress
+
+
 def record_test_attempt(
     user: User,
     lesson_number: int,
@@ -450,6 +478,7 @@ def lesson_state(user: User, lesson_number: int) -> dict[str, Any]:
         "theory": theory,
         "test": test,
         "practice": practice,
+        "video": bool(progress.theory_video_completed_at),
     }
 
 

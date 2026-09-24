@@ -689,3 +689,44 @@ def get_bank() -> ContentBank:
 def reload_bank() -> ContentBank:
     get_bank.cache_clear()
     return get_bank()
+
+
+VIDEO_FILE_RE = re.compile(r"^0*(\d+)(?:_.+)?\.(mp4|webm|ogg)$", re.I)
+VIDEO_MIME = {
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".ogg": "video/ogg",
+}
+
+
+def video_root(root: Path | None = None) -> Path:
+    return Path(root or CONTENT_ROOT) / "video"
+
+
+def lesson_number_from_video(filename: str) -> int | None:
+    name = Path(filename).name
+    m = VIDEO_FILE_RE.match(name)
+    if not m:
+        return None
+    return int(m.group(1))
+
+
+def video_mime(filename: str) -> str:
+    return VIDEO_MIME.get(Path(filename).suffix.lower(), "video/mp4")
+
+
+def find_lesson_video(number: int, root: Path | None = None) -> Path | None:
+    folder = video_root(root)
+    if not folder.is_dir():
+        return None
+    found: list[Path] = []
+    for path in folder.iterdir():
+        if not path.is_file():
+            continue
+        if lesson_number_from_video(path.name) == int(number):
+            found.append(path)
+    if not found:
+        return None
+    rank = {".mp4": 0, ".webm": 1, ".ogg": 2}
+    found.sort(key=lambda p: (rank.get(p.suffix.lower(), 9), p.name))
+    return found[0]

@@ -45,6 +45,9 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan",
     )
     achievements = db.relationship("UserAchievement", backref="user", cascade="all, delete-orphan")
+    theory_chats = db.relationship(
+        "TheoryChatMessage", backref="user", cascade="all, delete-orphan"
+    )
 
     def set_password(self, raw: str) -> None:
         self.password_hash = generate_password_hash(raw, method="pbkdf2:sha256")
@@ -103,6 +106,7 @@ class LessonProgress(db.Model):
     theory_scroll_pct = db.Column(db.Integer, nullable=False, default=0)
     theory_completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     theory_read_seconds = db.Column(db.Integer, nullable=False, default=0)
+    theory_video_completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     test_best_score = db.Column(db.Float, nullable=True)
     test_passed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     practice_correct = db.Column(db.Integer, nullable=False, default=0)
@@ -195,17 +199,37 @@ class UserAchievement(db.Model):
     earned_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class TheoryChatMessage(db.Model):
+    __tablename__ = "theory_chat_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    lesson_number = db.Column(db.Integer, nullable=False, index=True)
+    role = db.Column(db.String(16), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+
 def ensure_schema() -> None:
     """Добавляет колонки, которых нет в уже существующей базе."""
     inspector = inspect(db.engine)
     if "lesson_progress" not in inspector.get_table_names():
         return
     cols = {c["name"] for c in inspector.get_columns("lesson_progress")}
+    alters: list[str] = []
     if "theory_read_seconds" not in cols:
-        with db.engine.begin() as conn:
-            conn.execute(
-                text(
-                    "ALTER TABLE lesson_progress "
-                    "ADD COLUMN theory_read_seconds INTEGER DEFAULT 0"
-                )
-            )
+        alters.append(
+            "ALTER TABLE lesson_progress "
+            "ADD COLUMN theory_read_seconds INTEGER DEFAULT 0"
+        )
+    if "theory_video_completed_at" not in cols:
+        coltype = "DATETIME" if db.engine.dialect.name == "sqlite" else "TIMESTAMP"
+        alters.append(
+            "ALTER TABLE lesson_progress "
+            f"ADD COLUMN theory_video_completed_at {coltype}"
+        )
+    if not alters:
+        return
+    with db.engine.begin() as conn:
+        for stmt in alters:
+            conn.execute(text(stmt))

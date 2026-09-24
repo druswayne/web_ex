@@ -35,6 +35,9 @@
           <td>
             <div class="cell-stack">
               <strong>{% if st.theory %}100%{% else %}{{ st.progress.theory_scroll_pct }}%{% endif %}</strong>
+              {% if st.video %}
+              <span class="muted">видео просмотрено</span>
+              {% endif %}
               {% if st.progress.theory_read_seconds %}
               <span class="muted">чтение {{ st.progress.theory_read_seconds|duration }}</span>
               {% endif %}

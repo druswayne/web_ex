@@ -35,7 +35,7 @@
     <b>1</b>
     <div>
       <h3>Теория</h3>
-      <p>{% if state.theory %}Прочитана{% else %}Читайте до конца страницы — откроется тест{% endif %}</p>
+      <p>{% if state.theory %}Прочитана{% else %}Сначала краткое видео, затем текстовый разбор до конца{% endif %}</p>
     </div>
     <span class="pill {% if state.theory %}ok{% endif %}">{% if state.theory %}готово{% else %}открыто{% endif %}</span>
   </a>

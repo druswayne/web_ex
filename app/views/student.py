@@ -23,11 +23,12 @@ from ..check_jobs import (
     start_practice_check,
     sweep_stale_pending,
 )
-from ..config import UPLOADS_DIR
-from ..content import display_prompt, get_bank, render_markdown
+from ..config import Config, UPLOADS_DIR
+from ..content import display_prompt, find_lesson_video, get_bank, render_markdown
 from ..models import (
     PracticeAttempt,
     TestAttempt,
+    TheoryChatMessage,
     db,
     utcnow,
 )
@@ -39,11 +40,13 @@ from ..progress import (
     lesson_success_map,
     log_activity,
     mark_theory_progress,
+    mark_theory_video,
     record_test_attempt,
     refresh_practice_progress,
     test_done,
     theory_done,
 )
+from ..theory_tutor import MAX_QUESTION, ask_tutor, format_message_html
 from . import student_required
 
 bp = Blueprint("student", __name__)
@@ -154,7 +157,123 @@ def theory(number: int):
         )
     log_activity(current_user.id, "theory_open", lesson_number=number)
     db.session.commit()
-    return render_template("student/theory.html", lesson=lsn, state=st)
+    video_path = find_lesson_video(number)
+    video_name = video_path.name if video_path else ""
+    video_done = bool(st["progress"].theory_video_completed_at)
+    return render_template(
+        "student/theory.html",
+        lesson=lsn,
+        state=st,
+        video_name=video_name,
+        video_done=video_done,
+        text_unlocked=not video_name or video_done,
+    )
+
+
+@bp.route("/lessons/<int:number>/theory/video", methods=["POST"])
+@student_required
+def theory_video(number: int):
+    if not is_unlocked(current_user, number):
+        abort(403)
+    if not find_lesson_video(number):
+        abort(404)
+    data = request.get_json(silent=True) or {}
+    try:
+        watched = float(data.get("watched") or 0)
+    except (TypeError, ValueError):
+        watched = 0.0
+    try:
+        duration = float(data.get("duration") or 0)
+    except (TypeError, ValueError):
+        duration = 0.0
+    progress = mark_theory_video(
+        current_user, number, watched=watched, duration=duration
+    )
+    db.session.commit()
+    return jsonify(
+        {
+            "ok": True,
+            "completed": bool(progress.theory_video_completed_at),
+        }
+    )
+
+
+def _theory_text_open(number: int) -> bool:
+    if not find_lesson_video(number):
+        return True
+    progress = lesson_state(current_user, number)["progress"]
+    return bool(progress.theory_video_completed_at)
+
+
+def _chat_rows(number: int):
+    return (
+        TheoryChatMessage.query.filter_by(user_id=current_user.id, lesson_number=number)
+        .order_by(TheoryChatMessage.created_at.asc(), TheoryChatMessage.id.asc())
+        .all()
+    )
+
+
+def _chat_payload(row: TheoryChatMessage) -> dict:
+    return {"id": row.id, "role": row.role, "html": format_message_html(row.role, row.content)}
+
+
+@bp.route("/lessons/<int:number>/theory/chat", methods=["GET", "POST"])
+@student_required
+def theory_chat(number: int):
+    if not is_unlocked(current_user, number):
+        abort(403)
+    if not _theory_text_open(number):
+        return jsonify({"ok": False, "error": "Сначала досмотрите видеоурок."}), 403
+    lsn = _lesson(number)
+    if request.method == "GET":
+        return jsonify({"ok": True, "messages": [_chat_payload(row) for row in _chat_rows(number)]})
+    if not ai_configured():
+        return jsonify(
+            {"ok": False, "error": "Помощник пока не настроен. Администратору нужно указать ключ API."}
+        ), 503
+    data = request.get_json(silent=True) or {}
+    question = str(data.get("message") or "").strip()
+    if not question:
+        return jsonify({"ok": False, "error": "Напишите вопрос по материалу занятия."}), 400
+    if len(question) > MAX_QUESTION:
+        question = question[:MAX_QUESTION]
+    history = [{"role": row.role, "content": row.content} for row in _chat_rows(number)]
+    answer = ask_tutor(
+        title=lsn.title,
+        number=lsn.number,
+        theory_md=lsn.theory_body,
+        history=history,
+        question=question,
+        model=Config.AI_MODEL,
+    )
+    user_row = TheoryChatMessage(
+        user_id=current_user.id,
+        lesson_number=number,
+        role="user",
+        content=question,
+    )
+    bot_row = TheoryChatMessage(
+        user_id=current_user.id,
+        lesson_number=number,
+        role="assistant",
+        content=answer,
+    )
+    db.session.add(user_row)
+    db.session.add(bot_row)
+    db.session.commit()
+    return jsonify({"ok": True, "user": _chat_payload(user_row), "assistant": _chat_payload(bot_row)})
+
+
+@bp.route("/lessons/<int:number>/theory/chat/clear", methods=["POST"])
+@student_required
+def theory_chat_clear(number: int):
+    if not is_unlocked(current_user, number):
+        abort(403)
+    if not _theory_text_open(number):
+        return jsonify({"ok": False, "error": "Сначала досмотрите видеоурок."}), 403
+    TheoryChatMessage.query.filter_by(user_id=current_user.id, lesson_number=number).delete()
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 @bp.route("/lessons/<int:number>/test", methods=["GET", "POST"])

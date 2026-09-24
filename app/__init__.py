@@ -10,7 +10,13 @@ from flask_wtf import CSRFProtect
 from markupsafe import Markup
 
 from .config import Config, INSTANCE_DIR, PROJECT_ROOT, UPLOADS_DIR, WEB_ROOT
-from .content import get_bank, render_markdown
+from .content import (
+    get_bank,
+    lesson_number_from_video,
+    render_markdown,
+    video_mime,
+    video_root,
+)
 from .models import User, db, ensure_schema
 
 login_manager = LoginManager()
@@ -87,12 +93,36 @@ def create_app() -> Flask:
     app.register_blueprint(admin_bp)
 
     figures_dir = Path(app.config["CONTENT_ROOT"]) / "lessons" / "figures"
+    videos_dir = video_root(Path(app.config["CONTENT_ROOT"]))
 
     @app.route("/media/figures/<path:filename>")
     def media_figures(filename: str):
         if not current_user.is_authenticated:
             abort(401)
         return send_from_directory(figures_dir, filename)
+
+    @app.route("/media/video/<path:filename>")
+    def media_video(filename: str):
+        if not current_user.is_authenticated:
+            abort(401)
+        name = Path(filename).name
+        number = lesson_number_from_video(name)
+        if number is None:
+            abort(404)
+        if not current_user.is_admin:
+            from .progress import is_unlocked
+
+            if not current_user.is_student or not current_user.is_active:
+                abort(403)
+            if not is_unlocked(current_user, number):
+                abort(403)
+        if not (videos_dir / name).is_file():
+            abort(404)
+        return send_from_directory(
+            videos_dir,
+            name,
+            mimetype=video_mime(name),
+        )
 
     @app.errorhandler(403)
     def forbidden(_e):
@@ -110,7 +140,11 @@ def create_app() -> Flask:
             prefix = f"practice/{current_user.id}/"
             if not filename.replace("\\", "/").startswith(prefix):
                 abort(403)
-        return send_from_directory(UPLOADS_DIR, filename)
+        resp = send_from_directory(UPLOADS_DIR, filename)
+        resp.cache_control.public = False
+        resp.cache_control.private = True
+        resp.cache_control.max_age = 7 * 24 * 3600
+        return resp
 
     with app.app_context():
         db.create_all()
