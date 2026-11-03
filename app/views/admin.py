@@ -7,6 +7,8 @@ from flask import Blueprint, abort, flash, jsonify, redirect, render_template, r
 from flask_login import current_user
 from sqlalchemy import or_
 
+from ..accounts import email_error, normalize_email
+from ..billing import byn_input, commit_with_balance, parse_byn
 from ..config import LEVEL_BANDS, LEVEL_LABELS, UPLOADS_DIR
 from ..content import HOMEWORK_SLOT_BASE, get_bank, normalize_band, render_markdown
 from ..content_edit import (
@@ -18,13 +20,17 @@ from ..content_edit import (
 )
 from ..models import (
     ActivityLog,
+    BalanceLedger,
     LessonAccess,
     LessonProgress,
     PracticeAssignment,
     PracticeAttempt,
+    SUPPORT_KINDS,
+    SupportMessage,
     TestAttempt,
     User,
     db,
+    utcnow,
 )
 from ..progress import (
     bootstrap_student,
@@ -40,6 +46,49 @@ from . import admin_required
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 MIN_PASSWORD_LEN = 6
+
+LEDGER_LABELS = {
+    "tutor": "Помощник по теории",
+    "practice": "Проверка решения",
+    "admin": "Изменение баланса",
+}
+
+
+def _form_email(user: User | None) -> str:
+    posted = request.form.get("email")
+    if request.method == "POST" and posted is not None:
+        return posted
+    if user is None or not user.email:
+        return ""
+    return user.email
+
+
+def _clean_email(raw: str, exclude_id: int | None) -> tuple[str | None, str | None]:
+    text = (raw or "").strip()
+    if not text:
+        return None, None
+    error = email_error(text)
+    if error:
+        return None, error
+    if User.email_taken(text, exclude_id=exclude_id):
+        return None, "Такая почта уже используется."
+    return normalize_email(text), None
+
+
+def _form_balance(user: User | None) -> str:
+    posted = request.form.get("balance")
+    if request.method == "POST" and posted is not None:
+        return posted
+    if user is None:
+        return "0.00"
+    return byn_input(user.balance_byn)
+
+
+def _read_balance():
+    raw = request.form.get("balance")
+    if raw is None:
+        return None
+    return parse_byn(raw)
 
 
 def _delete_student(user: User) -> Path | None:
@@ -80,6 +129,7 @@ ACTION_LABELS = {
     "lesson_open": "Открыл занятие",
     "theory_open": "Открыл теорию",
     "theory_complete": "Дочитал теорию",
+    "theory_video_complete": "Досмотрел видео теории",
     "test_start": "Начал тест",
     "test_submit": "Сдал тест",
     "practice_open": "Открыл практическую часть",
@@ -93,8 +143,10 @@ ACTION_LABELS = {
     "achievement": "Получено достижение",
     "profile_updated": "Профиль изменён",
     "student_created": "Ученик создан",
+    "registered": "Регистрация",
     "student_deleted": "Ученик удалён",
     "password_changed": "Пароль изменён",
+    "balance_changed": "Баланс изменён",
     "content_theory": "Изменена теория занятия",
     "content_test": "Изменён тест занятия",
     "content_practice": "Изменена практика занятия",
@@ -141,6 +193,33 @@ def dashboard():
     )
 
 
+@bp.route("/messages")
+@admin_required
+def messages():
+    only_new = request.args.get("status") == "new"
+    query = SupportMessage.query.order_by(SupportMessage.created_at.desc())
+    if only_new:
+        query = query.filter(SupportMessage.read_at.is_(None))
+    return render_template(
+        "admin/messages.html",
+        rows=query.limit(200).all(),
+        only_new=only_new,
+        kinds=SUPPORT_KINDS,
+    )
+
+
+@bp.route("/messages/<int:message_id>")
+@admin_required
+def message_detail(message_id: int):
+    item = db.session.get(SupportMessage, message_id)
+    if item is None:
+        abort(404)
+    if item.read_at is None:
+        item.read_at = utcnow()
+        db.session.commit()
+    return render_template("admin/message.html", item=item, kinds=SUPPORT_KINDS)
+
+
 @bp.route("/students")
 @admin_required
 def students():
@@ -148,7 +227,9 @@ def students():
     query = User.query.filter_by(role="student")
     if q:
         like = f"%{q}%"
-        query = query.filter(or_(User.full_name.ilike(like), User.username.ilike(like)))
+        query = query.filter(
+            or_(User.full_name.ilike(like), User.username.ilike(like), User.email.ilike(like))
+        )
     rows = query.order_by(User.full_name).all()
     bank = get_bank()
     data = []
@@ -168,12 +249,44 @@ def student_new():
         password = request.form.get("password") or ""
         full_name = (request.form.get("full_name") or "").strip()
         level_band = request.form.get("level_band") or "1-2"
+        balance = _read_balance()
+        email, email_err = _clean_email(request.form.get("email") or "", None)
         if not username or not password or not full_name:
             flash("Заполните логин, пароль и имя.", "warning")
-            return render_template("admin/student_form.html", user=None, level_band=level_band)
+            return render_template(
+                "admin/student_form.html",
+                user=None,
+                level_band=level_band,
+                balance_input=_form_balance(None),
+                email_input=_form_email(None),
+            )
+        if balance is None:
+            flash("Баланс укажите числом в белорусских рублях, например 10,00.", "warning")
+            return render_template(
+                "admin/student_form.html",
+                user=None,
+                level_band=level_band,
+                balance_input=_form_balance(None),
+                email_input=_form_email(None),
+            )
         if User.username_taken(username):
             flash("Такой логин уже занят.", "danger")
-            return render_template("admin/student_form.html", user=None, level_band=level_band)
+            return render_template(
+                "admin/student_form.html",
+                user=None,
+                level_band=level_band,
+                balance_input=_form_balance(None),
+                email_input=_form_email(None),
+            )
+        if email_err:
+            flash(email_err, "warning")
+            return render_template(
+                "admin/student_form.html",
+                user=None,
+                level_band=level_band,
+                balance_input=_form_balance(None),
+                email_input=_form_email(None),
+            )
         if level_band not in LEVEL_BANDS:
             level_band = "1-2"
         user = User(
@@ -181,17 +294,29 @@ def student_new():
             full_name=full_name,
             role="student",
             level_band=level_band,
+            email=email,
             is_active=True,
         )
         user.set_password(password)
         db.session.add(user)
         db.session.flush()
         bootstrap_student(user)
-        log_activity(user.id, "student_created", actor_id=current_user.id, details={"level": level_band})
-        db.session.commit()
+        log_activity(
+            user.id,
+            "student_created",
+            actor_id=current_user.id,
+            details={"level": level_band, "balance": str(balance)},
+        )
+        commit_with_balance(user, balance, current_user.id)
         flash("Ученик создан. Первое занятие уже открыто.", "success")
         return redirect(url_for("admin.student_detail", user_id=user.id))
-    return render_template("admin/student_form.html", user=None, level_band="3-4")
+    return render_template(
+        "admin/student_form.html",
+        user=None,
+        level_band="3-4",
+        balance_input="0.00",
+        email_input="",
+    )
 
 
 @bp.route("/students/<int:user_id>/edit", methods=["GET", "POST"])
@@ -204,15 +329,49 @@ def student_edit(user_id: int):
         password = request.form.get("password") or ""
         level_band = request.form.get("level_band") or user.level_band
         is_active = request.form.get("is_active") == "1"
+        balance = _read_balance()
+        email, email_err = _clean_email(request.form.get("email") or "", user.id)
         if not full_name or not username:
             flash("Имя и логин обязательны.", "warning")
-            return render_template("admin/student_form.html", user=user, level_band=level_band)
+            return render_template(
+                "admin/student_form.html",
+                user=user,
+                level_band=level_band,
+                balance_input=_form_balance(user),
+                email_input=_form_email(user),
+            )
+        if balance is None:
+            flash("Баланс укажите числом в белорусских рублях, например 10,00.", "warning")
+            return render_template(
+                "admin/student_form.html",
+                user=user,
+                level_band=level_band,
+                balance_input=_form_balance(user),
+                email_input=_form_email(user),
+            )
         if User.username_taken(username, exclude_id=user.id):
             flash("Такой логин уже занят.", "danger")
-            return render_template("admin/student_form.html", user=user, level_band=level_band)
+            return render_template(
+                "admin/student_form.html",
+                user=user,
+                level_band=level_band,
+                balance_input=_form_balance(user),
+                email_input=_form_email(user),
+            )
+        if email_err:
+            flash(email_err, "warning")
+            return render_template(
+                "admin/student_form.html",
+                user=user,
+                level_band=level_band,
+                balance_input=_form_balance(user),
+                email_input=_form_email(user),
+            )
         old_level = user.level_band
+        old_balance = byn_input(user.balance_byn)
         user.full_name = full_name
         user.username = username
+        user.email = email
         user.is_active = is_active
         if level_band in LEVEL_BANDS:
             user.level_band = level_band
@@ -226,10 +385,23 @@ def student_edit(user_id: int):
             actor_id=current_user.id,
             details={"old_level": old_level, "new_level": user.level_band},
         )
-        db.session.commit()
+        if old_balance != byn_input(balance):
+            log_activity(
+                user.id,
+                "balance_changed",
+                actor_id=current_user.id,
+                details={"old": old_balance, "new": byn_input(balance)},
+            )
+        commit_with_balance(user, balance, current_user.id)
         flash("Профиль сохранён.", "success")
         return redirect(url_for("admin.student_detail", user_id=user.id))
-    return render_template("admin/student_form.html", user=user, level_band=user.level_band)
+    return render_template(
+        "admin/student_form.html",
+        user=user,
+        level_band=user.level_band,
+        balance_input=byn_input(user.balance_byn),
+        email_input=user.email or "",
+    )
 
 
 @bp.route("/students/<int:user_id>/delete", methods=["POST"])
@@ -284,14 +456,45 @@ def student_detail(user_id: int):
         .limit(80)
         .all()
     )
+    ledger = (
+        BalanceLedger.query.filter_by(user_id=user.id)
+        .filter(BalanceLedger.status.in_(("settled", "held")))
+        .order_by(BalanceLedger.created_at.desc(), BalanceLedger.id.desc())
+        .limit(20)
+        .all()
+    )
     return render_template(
         "admin/student_detail.html",
         student=user,
         lessons=lessons,
         activities=activities,
+        ledger=ledger,
+        ledger_labels=LEDGER_LABELS,
         action_labels=ACTION_LABELS,
         level_label=LEVEL_LABELS.get(user.level_band or "", user.level_band),
+        balance_input=byn_input(user.balance_byn),
     )
+
+
+@bp.route("/students/<int:user_id>/balance", methods=["POST"])
+@admin_required
+def student_balance(user_id: int):
+    user = User.query.filter_by(id=user_id, role="student").first_or_404()
+    balance = parse_byn(request.form.get("balance") or "")
+    if balance is None:
+        flash("Баланс укажите числом в белорусских рублях, например 10,00.", "warning")
+        return redirect(url_for("admin.student_detail", user_id=user.id))
+    old = byn_input(user.balance_byn)
+    if old != byn_input(balance):
+        log_activity(
+            user.id,
+            "balance_changed",
+            actor_id=current_user.id,
+            details={"old": old, "new": byn_input(balance)},
+        )
+    commit_with_balance(user, balance, current_user.id)
+    flash(f"Баланс {user.full_name} сохранён.", "success")
+    return redirect(url_for("admin.student_detail", user_id=user.id))
 
 
 @bp.route("/students/<int:user_id>/access", methods=["POST"])

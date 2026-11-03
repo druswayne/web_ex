@@ -28,10 +28,12 @@
 
 <aside class="tips card">
   <h3>Как сфотографировать решение</h3>
+  <p class="tips-warn">Проверка читает рукопись с фото. Неаккуратная запись — слитные цифры, неясные знаки, кривые дроби — может быть разобрана неправильно, и верное решение не засчитают.</p>
   <ul>
+    <li>Пишите разборчиво: каждая цифра, знак и дробь должны читаться отдельно.</li>
     <li>Свет ровный, без тени от руки и вспышки.</li>
     <li>В кадр попало всё решение: условие можно не снимать, ход и ответ — обязательно.</li>
-    <li>Текст разборчивый, лист не обрезан, камера параллельна тетради.</li>
+    <li>Лист не обрезан, камера параллельна тетради.</li>
     <li>На одном фото — только одно задание.</li>
     <li>Без сильного размытия. Если сомневаетесь — переснимите.</li>
   </ul>
@@ -60,6 +62,8 @@
 </div>
 {% elif not ai_ready %}
 <div class="flash flash-warning">Проверка ИИ не настроена. Администратору нужен ключ OPENROUTER_API_KEY.</div>
+{% elif current_user.balance_byn <= 0 %}
+<div class="flash flash-warning">Недостаточно средств на балансе.</div>
 {% else %}
 <form class="card upload-form" method="post" enctype="multipart/form-data" action="{{ url_for('student.practice_submit', number=lesson.number, assignment_id=current.id) }}" id="practiceForm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

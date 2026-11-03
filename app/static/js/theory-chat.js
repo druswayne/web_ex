@@ -17,12 +17,20 @@
   let sending = false;
   let quoteText = "";
   let placeTimer = 0;
+  let pollToken = 0;
 
   const csrfHeaders = () => ({
     "Content-Type": "application/json",
     Accept: "application/json",
     "X-CSRFToken": window.csrfToken || "",
   });
+
+  const paintBalance = (label) => {
+    if (!label) return;
+    document.querySelectorAll("[data-balance-label]").forEach((el) => {
+      el.textContent = label;
+    });
+  };
 
   const renderMath = (el) => {
     if (el && window.renderMathInElement && window.katexAutoOpts) {
@@ -44,12 +52,13 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
-  const appendMsg = (role, html, { typing = false } = {}) => {
+  const appendMsg = (role, html, { typing = false, id = null } = {}) => {
     if (!logEl) return null;
     const hint = logEl.querySelector(".tutor-empty");
     if (hint) hint.remove();
     const row = document.createElement("article");
     row.className = `tutor-msg tutor-msg-${role}${typing ? " is-typing" : ""}`;
+    if (id != null) row.dataset.id = String(id);
     const label = document.createElement("span");
     label.className = "tutor-msg-who";
     label.textContent = role === "user" ? "Вы" : "Помощник";
@@ -61,6 +70,94 @@
     renderMath(body);
     logEl.scrollTop = logEl.scrollHeight;
     return row;
+  };
+
+  const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+  const fillAssistantRow = (row, html) => {
+    if (!row) return;
+    row.classList.remove("is-typing");
+    const body = row.querySelector(".tutor-msg-body");
+    if (body) {
+      body.innerHTML = html || "";
+      renderMath(body);
+    }
+    if (logEl) logEl.scrollTop = logEl.scrollHeight;
+  };
+
+  const pollAssistant = async (id, waitRow) => {
+    const token = ++pollToken;
+    const deadline = Date.now() + 4 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await sleep(2000);
+      if (token !== pollToken) return;
+      try {
+        const res = await fetch(chatUrl, { headers: { Accept: "application/json" } });
+        const data = await res.json().catch(() => ({}));
+        paintBalance(data.balance);
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+        const msg = messages.find((item) => Number(item.id) === Number(id));
+        if (!msg) return;
+        if (!msg.pending) {
+          fillAssistantRow(waitRow, msg.html || "");
+          return;
+        }
+      } catch (_) {
+        /* сеть могла моргнуть — следующий тик повторит */
+      }
+    }
+    if (token !== pollToken) return;
+    fillAssistantRow(
+      waitRow,
+      "<p>Ответ задерживается. Откройте чат чуть позже — он появится в переписке.</p>",
+    );
+  };
+
+  const setSending = (on) => {
+    sending = on;
+    if (sendBtn) sendBtn.disabled = on;
+  };
+
+  const loadHistory = () => {
+    if (loadPromise) return loadPromise;
+    loaded = true;
+    loadPromise = (async () => {
+      if (!logEl || !chatUrl) return;
+      logEl.innerHTML = "";
+      try {
+        const res = await fetch(chatUrl, { headers: { Accept: "application/json" } });
+        const data = await res.json();
+        paintBalance(data.balance);
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+        if (!messages.length) {
+          logEl.append(emptyHint());
+          return;
+        }
+        let pendingId = null;
+        let pendingRow = null;
+        messages.forEach((msg) => {
+          const row = appendMsg(msg.role, msg.html || "", {
+            typing: Boolean(msg.pending),
+            id: msg.id,
+          });
+          if (msg.pending && msg.role === "assistant") {
+            pendingId = msg.id;
+            pendingRow = row;
+          }
+        });
+        if (pendingId && pendingRow) {
+          setSending(true);
+          try {
+            await pollAssistant(pendingId, pendingRow);
+          } finally {
+            setSending(false);
+          }
+        }
+      } catch (_) {
+        logEl.append(emptyHint());
+      }
+    })();
+    return loadPromise;
   };
 
   const hideAsk = () => {
@@ -182,28 +279,6 @@
     placeTimer = window.setTimeout(placeAsk, 50);
   };
 
-  const loadHistory = () => {
-    if (loadPromise) return loadPromise;
-    loaded = true;
-    loadPromise = (async () => {
-      if (!logEl || !chatUrl) return;
-      logEl.innerHTML = "";
-      try {
-        const res = await fetch(chatUrl, { headers: { Accept: "application/json" } });
-        const data = await res.json();
-        const messages = Array.isArray(data.messages) ? data.messages : [];
-        if (!messages.length) {
-          logEl.append(emptyHint());
-          return;
-        }
-        messages.forEach((msg) => appendMsg(msg.role, msg.html || ""));
-      } catch (_) {
-        logEl.append(emptyHint());
-      }
-    })();
-    return loadPromise;
-  };
-
   const setOpen = async (open) => {
     if (!layer) return;
     layer.hidden = !open;
@@ -220,10 +295,9 @@
     if (sending || !chatUrl || !input) return;
     const text = String(preset || input.value || "").trim();
     if (!text) return;
-    sending = true;
-    if (sendBtn) sendBtn.disabled = true;
+    setSending(true);
     if (!preset) input.value = "";
-    appendMsg("user", `<p>${escapeHtml(text).replace(/\n/g, "<br>\n")}</p>`);
+    const userRow = appendMsg("user", `<p>${escapeHtml(text).replace(/\n/g, "<br>\n")}</p>`);
     const wait = appendMsg("assistant", "<p>Думаю…</p>", { typing: true });
     try {
       const res = await fetch(chatUrl, {
@@ -232,18 +306,30 @@
         body: JSON.stringify({ message: text }),
       });
       const data = await res.json().catch(() => ({}));
-      wait?.remove();
+      paintBalance(data.balance);
       if (!res.ok || !data.ok) {
-        appendMsg("assistant", `<p>${escapeHtml(data.error || "Не удалось получить ответ. Попробуйте ещё раз.")}</p>`);
+        userRow?.remove();
+        wait?.remove();
+        appendMsg(
+          "assistant",
+          `<p>${escapeHtml(data.error || "Не удалось получить ответ. Попробуйте ещё раз.")}</p>`,
+        );
+        return;
+      }
+      const assistantId = data.assistant && data.assistant.id;
+      if (assistantId && wait) wait.dataset.id = String(assistantId);
+      if (data.pending && assistantId) {
+        await pollAssistant(assistantId, wait);
       } else if (data.assistant) {
-        appendMsg("assistant", data.assistant.html || "");
+        fillAssistantRow(wait, data.assistant.html || "");
+      } else {
+        wait?.remove();
       }
     } catch (_) {
       wait?.remove();
       appendMsg("assistant", "<p>Нет связи. Проверьте интернет и спросите ещё раз.</p>");
     } finally {
-      sending = false;
-      if (sendBtn) sendBtn.disabled = false;
+      setSending(false);
       input?.focus();
     }
   };
@@ -266,6 +352,8 @@
     try {
       const res = await fetch(clearUrl, { method: "POST", headers: csrfHeaders(), body: "{}" });
       if (!res.ok) return;
+      pollToken += 1;
+      setSending(false);
       loaded = true;
       loadPromise = Promise.resolve();
       if (logEl) {

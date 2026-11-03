@@ -1,40 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Кабинет{% endblock %}
 {% block content %}
-<section class="hero-card">
+<section class="cabinet-top">
   <div>
     <p class="eyebrow">Личный кабинет</p>
-    <h1>{{ current_user.full_name }}</h1>
-    <p class="muted">В практике — самостоятельная работа.</p>
+    <div class="cabinet-title">
+      <h1>{{ current_user.full_name }}</h1>
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('student.profile') }}">Изменить данные</a>
+    </div>
+    {% if current %}
+    <p class="cabinet-next">Дальше занятие {{ current[0].number }} — {{ current[0].title }}</p>
+    {% else %}
+    <p class="cabinet-next">Открытые занятия пройдены.</p>
+    {% endif %}
+    <div class="cabinet-actions">
+      {% if current %}
+      <a class="btn btn-primary" href="{{ url_for('student.lesson', number=current[0].number) }}">
+        Продолжить занятие {{ current[0].number }}
+      </a>
+      {% endif %}
+    </div>
   </div>
-  {% if current %}
-  <a class="btn btn-primary" href="{{ url_for('student.lesson', number=current[0].number) }}">
-    Продолжить занятие {{ current[0].number }}
-  </a>
-  {% endif %}
+  <aside class="cabinet-balance">
+    <span>Баланс</span>
+    <strong>{{ current_user.balance_byn|byn }}</strong>
+    <small>Для помощника по теории и проверки решений.</small>
+    {% if topup_url %}
+    <a class="btn btn-ghost" href="{{ topup_url }}" target="_blank" rel="noopener noreferrer">Пополнить в Telegram</a>
+    {% endif %}
+  </aside>
 </section>
 
-<div class="stat-grid">
-  <article class="stat">
+<section class="cabinet-stats" aria-label="Сводка">
+  <article>
     <span>Пройдено</span>
     <strong>{{ done }} / {{ lesson_count }}</strong>
-    <div class="bar"><i style="width: {{ (100 * done / lesson_count) if lesson_count else 0 }}%"></i></div>
+    <div class="cabinet-meter"><i style="width: {{ (100 * done / lesson_count) if lesson_count else 0 }}%"></i></div>
   </article>
-  <article class="stat">
-    <span>Открыто занятий</span>
+  <article>
+    <span>Открыто</span>
     <strong>{{ unlocked }}</strong>
+    <small>из {{ lesson_count }} занятий</small>
   </article>
-  <article class="stat">
-    <span>Средний балл теста</span>
+  <article>
+    <span>Средний балл</span>
     <strong>{% if avg_test is not none %}{{ avg_test }}%{% else %}—{% endif %}</strong>
-    <small>{% if best_test is not none %}лучший {{ best_test }}% · {{ test_count }} попыток{% else %}ещё не сдавали{% endif %}</small>
+    <small>{% if best_test is not none %}лучший {{ best_test }}% · {{ test_count }} попыток{% else %}тестов ещё не было{% endif %}</small>
   </article>
-  <article class="stat">
-    <span>Практическая часть</span>
+  <article>
+    <span>Практика</span>
     <strong>{{ practice_correct }}{% if practice_total %} / {{ practice_total }}{% endif %}</strong>
     <small>засчитанных заданий</small>
   </article>
-</div>
+</section>
 
 <section class="card">
   <div class="card-head">
@@ -56,13 +74,19 @@
       {% set steps = (1 if st.theory else 0) + (1 if st.test else 0) + (1 if st.practice else 0) %}
       {% set nsub = lsn.subtopics|length %}
       {% if st.unlocked %}
-      <a class="lesson-tile hue-{{ (lsn.number - 1) % 6 }} {{ st.stage }}" href="{{ url_for('student.lesson', number=lsn.number) }}">
+      <a class="lesson-tile {{ st.stage }}{% if current and current[0].number == lsn.number %} is-current{% endif %}" href="{{ url_for('student.lesson', number=lsn.number) }}">
       {% else %}
-      <div class="lesson-tile hue-{{ (lsn.number - 1) % 6 }} locked">
+      <div class="lesson-tile locked">
       {% endif %}
         <div class="tile-head">
-          <span class="tile-kicker">тема</span>
           <b class="tile-num">{{ '%02d'|format(lsn.number) }}</b>
+          <em>
+            {% if st.stage == 'done' %}готово
+            {% elif st.stage == 'practice' %}практика
+            {% elif st.stage == 'test' %}тест
+            {% elif st.stage == 'theory' %}теория
+            {% else %}закрыто{% endif %}
+          </em>
         </div>
         <strong class="tile-title">{{ lsn.title }}</strong>
         <div class="tile-meters">
@@ -77,7 +101,7 @@
         </div>
         <div class="tile-meta">
           <span>
-            {% if pall %}{{ pok }} / {{ pall }}{% else %}{{ steps }} / 3{% endif %}
+            {% if pall %}{{ pok }} / {{ pall }} заданий{% else %}{{ steps }} / 3 шага{% endif %}
             {% if nsub %}
               · {{ nsub }}
               {% if nsub % 10 == 1 and nsub % 100 != 11 %}подтема
@@ -85,36 +109,9 @@
               {% else %}подтем{% endif %}
             {% endif %}
           </span>
-          <em>
-            {% if st.stage == 'done' %}готово
-            {% elif st.stage == 'practice' %}практика
-            {% elif st.stage == 'test' %}тест
-            {% elif st.stage == 'theory' %}теория
-            {% else %}закрыто{% endif %}
-          </em>
         </div>
       {% if st.unlocked %}</a>{% else %}</div>{% endif %}
     {% endfor %}
   </div>
-</section>
-
-<section class="card">
-  <div class="card-head">
-    <h2>Последние тесты</h2>
-  </div>
-  {% if recent_tests %}
-  <ul class="plain-list">
-    {% for t in recent_tests %}
-    <li>
-      <a href="{{ url_for('student.test_result', number=t.lesson_number, attempt_id=t.id) }}">
-        Занятие {{ t.lesson_number }} · попытка {{ t.attempt_no }}
-      </a>
-      <span class="pill {% if t.passed %}ok{% else %}bad{% endif %}">{{ t.score }}%</span>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="muted">Пока нет попыток. Начните с теории первого занятия.</p>
-  {% endif %}
 </section>
 {% endblock %}

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, abort, send_from_directory
+from flask import Flask, abort, request, send_from_directory
 from flask_login import LoginManager, current_user
 from flask_wtf import CSRFProtect
 from markupsafe import Markup
@@ -70,27 +71,65 @@ def create_app() -> Flask:
 
         return format_duration(seconds)
 
+    @app.template_filter("byn")
+    def byn_filter(value) -> str:
+        from .billing import format_byn
+
+        return format_byn(value)
+
+    @app.template_filter("byn_delta")
+    def byn_delta_filter(value) -> str:
+        from .billing import format_byn_delta
+
+        return format_byn_delta(value)
+
     @app.context_processor
     def inject_globals():
+        from urllib.parse import quote
+
         from .config import LEVEL_BANDS, LEVEL_LABELS
         from .ai_checker import ai_configured
 
         bank = get_bank()
+        configured = (app.config.get("PUBLIC_BASE_URL") or "").strip().rstrip("/")
+        handle = (app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@")
+        topup_url = ""
+        if handle:
+            login = current_user.username if current_user.is_authenticated else ""
+            note = "Здравствуйте! Хочу пополнить баланс."
+            if login:
+                note += f" Логин: {login}"
+            topup_url = f"https://t.me/{handle}?text={quote(note)}"
+        support_new = 0
+        if current_user.is_authenticated and current_user.is_admin:
+            from .models import SupportMessage
+
+            support_new = SupportMessage.query.filter(SupportMessage.read_at.is_(None)).count()
         return {
             "LEVEL_BANDS": LEVEL_BANDS,
             "LEVEL_LABELS": LEVEL_LABELS,
             "course_title": bank.exam_title,
             "lesson_count": bank.count,
             "ai_ready": ai_configured(),
+            "site_base": configured or request.url_root.rstrip("/"),
+            "seo_google": app.config.get("GOOGLE_SITE_VERIFICATION") or "",
+            "seo_yandex": app.config.get("YANDEX_VERIFICATION") or "",
+            "seo_bing": app.config.get("BING_SITE_VERIFICATION") or "",
+            "seo_facebook": app.config.get("FACEBOOK_DOMAIN_VERIFICATION") or "",
+            "topup_url": topup_url,
+            "contact_email": app.config.get("CONTACT_EMAIL") or "",
+            "support_new": support_new,
         }
 
     from .views.auth import bp as auth_bp
     from .views.student import bp as student_bp
     from .views.admin import bp as admin_bp
+    from .views.seo import bp as seo_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(student_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(seo_bp)
 
     figures_dir = Path(app.config["CONTENT_ROOT"]) / "lessons" / "figures"
     videos_dir = video_root(Path(app.config["CONTENT_ROOT"]))
@@ -150,6 +189,13 @@ def create_app() -> Flask:
         db.create_all()
         ensure_schema()
         _ensure_bootstrap()
+        from .tutor_jobs import resume_pending_tutor
+
+        resume_pending_tutor(app)
+        if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+            from .check_jobs import start_practice_watch
+
+            start_practice_watch(app)
 
     return app
 

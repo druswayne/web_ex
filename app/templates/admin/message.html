@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Обращение{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('admin.messages') }}">Обращения</a></p>
+<header class="cabinet-page-head">
+  <p class="eyebrow">{{ kinds.get(item.kind, item.kind) }}</p>
+  <h1>{{ item.name }}</h1>
+  <p class="muted">{{ item.created_at|dt }} · <a href="mailto:{{ item.email }}">{{ item.email }}</a></p>
+</header>
+<section class="card">
+  <p class="message-body">{{ item.body }}</p>
+</section>
+{% if item.author %}
+<p><a href="{{ url_for('admin.student_detail', user_id=item.author.id) }}">Карточка ученика {{ item.author.username }}</a></p>
+{% endif %}
+{% endblock %}

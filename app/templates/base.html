@@ -2,9 +2,21 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
+  <script>
+    document.documentElement.classList.toggle(
+      "cookie-ok",
+      /(^|; )cookie_consent=/.test(document.cookie)
+    );
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <title>{% block title %}Математика 9{% endblock %} · {{ course_title }}</title>
+  <meta name="theme-color" content="#0d6e6a">
+  <title>{% block full_title %}{% block title %}Математика 9{% endblock %} · {{ course_title }}{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  {% block meta %}
+  <meta name="robots" content="noindex, nofollow">
+  {% endblock %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -23,21 +35,29 @@
       </span>
     </a>
     <nav class="topnav">
+      {% if show_home_nav %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.index') }}">Главная</a>
+      {% endif %}
       {% if current_user.is_authenticated and current_user.is_admin %}
         <a href="{{ url_for('admin.dashboard') }}">Сводка</a>
         <a href="{{ url_for('admin.students') }}">Ученики</a>
         <a href="{{ url_for('admin.lessons') }}">Занятия</a>
+        <a href="{{ url_for('admin.messages') }}">Обращения{% if support_new %} <span class="nav-count">{{ support_new }}</span>{% endif %}</a>
         <a href="{{ url_for('admin.profile') }}">Кабинет</a>
       {% elif current_user.is_authenticated %}
         <a href="{{ url_for('student.dashboard') }}">Кабинет</a>
+        <a href="{{ url_for('student.messages') }}">Сообщения</a>
       {% endif %}
     </nav>
     {% if current_user.is_authenticated %}
     <div class="who">
+      {% if current_user.is_authenticated and current_user.is_student %}
+      <a class="balance-pill" data-balance-label href="{{ url_for('student.dashboard') }}" title="Личный кабинет">{{ current_user.balance_byn|byn }}</a>
+      {% endif %}
       {% if current_user.is_admin %}
       <a class="who-name" href="{{ url_for('admin.profile') }}">{{ current_user.full_name }}</a>
       {% else %}
-      <span>{{ current_user.full_name }}</span>
+      <span class="who-name">{{ current_user.username }}</span>
       {% endif %}
       <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.logout') }}">Выйти</a>
     </div>
@@ -57,6 +77,49 @@
     {% endwith %}
     {% block content %}{% endblock %}
   </main>
+
+  <footer class="site-foot">
+    <nav aria-label="Документы">
+      <a href="{{ url_for('auth.cookies') }}">Соглашение о файлах cookie</a>
+    </nav>
+    {% if contact_email %}
+    <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+    {% endif %}
+  </footer>
+
+  <div class="cookie-banner" role="dialog" aria-labelledby="cookie-banner-title">
+    <div class="cookie-banner-inner">
+      <div class="cookie-banner-text">
+        <strong id="cookie-banner-title">Файлы cookie</strong>
+        <p>Мы используем только технические cookie: они нужны, чтобы запомнить вход в аккаунт и защитить формы. Рекламные и аналитические cookie не ставим. <a href="{{ url_for('auth.cookies') }}">Подробнее в соглашении</a>.</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="cookie-accept">Принять</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const name = "cookie_consent";
+      const secure = location.protocol === "https:" ? "; Secure" : "";
+      const has = () => document.cookie.split("; ").some((part) => part.startsWith(name + "="));
+      const mark = (ok) => document.documentElement.classList.toggle("cookie-ok", ok);
+      const status = document.getElementById("cookie-status");
+      const showStatus = (text) => { if (status) status.textContent = text; };
+      document.getElementById("cookie-accept")?.addEventListener("click", () => {
+        document.cookie = name + "=accepted; Max-Age=31536000; Path=/; SameSite=Lax" + secure;
+        mark(true);
+        showStatus("В этом браузере согласие сохранено.");
+      });
+      showStatus(has()
+        ? "В этом браузере согласие сохранено."
+        : "В этом браузере согласие ещё не сохранено.");
+      document.getElementById("cookie-revoke")?.addEventListener("click", () => {
+        document.cookie = name + "=; Max-Age=0; Path=/; SameSite=Lax" + secure;
+        mark(false);
+        if (status) status.textContent = "Согласие отозвано. Плашка снова появится на страницах сайта.";
+      });
+    })();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>

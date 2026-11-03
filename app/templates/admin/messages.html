@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Обращения{% endblock %}
+{% block content %}
+<section class="hero-card compact">
+  <div>
+    <h1>Обращения</h1>
+    <p class="muted">Вопросы, жалобы и другие сообщения учеников.</p>
+  </div>
+</section>
+<p class="actions">
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.messages') }}">Все</a>
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.messages', status='new') }}">Непрочитанные</a>
+</p>
+<div class="table-wrap card">
+  <table>
+    <thead>
+      <tr><th>Когда</th><th>От кого</th><th>Тип</th><th>Текст</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for item in rows %}
+      <tr>
+        <td class="nowrap">{{ item.created_at|dt }}</td>
+        <td>
+          {{ item.name }}
+          <div class="muted">{{ item.email }}</div>
+        </td>
+        <td>{{ kinds.get(item.kind, item.kind) }}</td>
+        <td>{{ item.body[:120] }}{% if item.body|length > 120 %}…{% endif %}</td>
+        <td class="nowrap">
+          {% if not item.read_at %}<span class="pill wait">новое</span> {% endif %}
+          <a href="{{ url_for('admin.message_detail', message_id=item.id) }}">открыть</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">{% if only_new %}Непрочитанных обращений нет.{% else %}Обращений пока нет.{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

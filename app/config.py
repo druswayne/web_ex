@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -59,13 +60,55 @@ def _database_uri() -> str:
     return "sqlite:///" + (INSTANCE_DIR / "math9.db").resolve().as_posix()
 
 
+def _decimal_env(name: str, default: str) -> Decimal:
+    raw = (os.getenv(name) or "").strip() or default
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        value = Decimal(default)
+    if value < 0:
+        return Decimal(default)
+    return value
+
+
+def _telegram_username(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    value = value.split("?", 1)[0].rstrip("/")
+    lower = value.lower()
+    for prefix in ("https://t.me/", "http://t.me/", "https://telegram.me/", "http://telegram.me/"):
+        if lower.startswith(prefix):
+            value = value[len(prefix) :]
+            break
+    value = value.lstrip("@").strip()
+    if "/" in value:
+        value = value.split("/", 1)[0]
+    return value
+
+
+def _int_env(name: str, default: int, lo: int, hi: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    try:
+        n = int(raw) if raw else default
+    except ValueError:
+        n = default
+    return max(lo, min(hi, n))
+
+
 class Config:
     SECRET_KEY = _secret_key()
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
     if SQLALCHEMY_DATABASE_URI.startswith("sqlite"):
-        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {"check_same_thread": False}
+        SQLALCHEMY_ENGINE_OPTIONS["connect_args"] = {
+            "check_same_thread": False,
+            "timeout": 30,
+        }
+    else:
+        SQLALCHEMY_ENGINE_OPTIONS["pool_size"] = max(5, _int_env("AI_CHECK_CONCURRENCY", 4, 1, 8) + 4)
+        SQLALCHEMY_ENGINE_OPTIONS["max_overflow"] = 12
 
     WTF_CSRF_TIME_LIMIT = None
     MAX_CONTENT_LENGTH = 12 * 1024 * 1024
@@ -78,6 +121,8 @@ class Config:
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin").strip() or "admin"
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "changeme").strip() or "changeme"
     ADMIN_NAME = os.getenv("ADMIN_NAME", "Администратор").strip() or "Администратор"
+    ADMIN_TELEGRAM = _telegram_username(os.getenv("ADMIN_TELEGRAM", "Putsiato"))
+    CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "druswayne@gmail.com").strip() or "druswayne@gmail.com"
 
     DEMO_SEED = os.getenv("DEMO_SEED", "1").strip() not in {"0", "false", "False"}
     DEMO_USERNAME = os.getenv("DEMO_USERNAME", "ivan").strip() or "ivan"
@@ -91,5 +136,24 @@ class Config:
         or "openai/gpt-5.6-luna-pro"
     )
     AI_REASONING_EFFORT = (os.getenv("AI_REASONING_EFFORT") or "high").strip() or "high"
+    AI_CHECK_CONCURRENCY = _int_env("AI_CHECK_CONCURRENCY", 4, 1, 8)
+    # Как часто снова отправлять на проверку фото, которые всё ещё в статусе «не проверено».
+    PRACTICE_RECHECK_HOURS = _int_env("PRACTICE_RECHECK_HOURS", 3, 1, 24)
+    # Цены openai/gpt-5.6-luna-pro на OpenRouter, USD за 1 млн токенов.
+    AI_INPUT_USD_PER_MTOK = _decimal_env("AI_INPUT_USD_PER_MTOK", "0.20")
+    AI_OUTPUT_USD_PER_MTOK = _decimal_env("AI_OUTPUT_USD_PER_MTOK", "1.20")
+    AI_INPUT_USD_PER_MTOK_LONG = _decimal_env("AI_INPUT_USD_PER_MTOK_LONG", "0.40")
+    AI_OUTPUT_USD_PER_MTOK_LONG = _decimal_env("AI_OUTPUT_USD_PER_MTOK_LONG", "1.80")
+    AI_LONG_CONTEXT_TOKENS = _int_env("AI_LONG_CONTEXT_TOKENS", 272_000, 1, 2_000_000)
+    # Цена для ученика = себестоимость × 20 (наценка 1900%).
+    # При обычном режиме это около 20 Br с ученика за 4 недели.
+    AI_PRICE_MARKUP = Decimal("20")
     TEST_PASS_PERCENT = float(os.getenv("TEST_PASS_PERCENT", "80"))
     PRACTICE_PASS_PERCENT = float(os.getenv("PRACTICE_PASS_PERCENT", "80"))
+
+    # Канонический адрес сайта без слэша на конце. Пусто — берётся адрес текущего запроса.
+    PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    GOOGLE_SITE_VERIFICATION = os.getenv("GOOGLE_SITE_VERIFICATION", "").strip()
+    YANDEX_VERIFICATION = os.getenv("YANDEX_VERIFICATION", "").strip()
+    BING_SITE_VERIFICATION = os.getenv("BING_SITE_VERIFICATION", "").strip()
+    FACEBOOK_DOMAIN_VERIFICATION = os.getenv("FACEBOOK_DOMAIN_VERIFICATION", "").strip()

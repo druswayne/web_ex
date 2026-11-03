@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Сообщения{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.dashboard') }}">Кабинет</a></p>
+<header class="cabinet-page-head">
+  <p class="eyebrow">Администратору</p>
+  <h1>Вопрос или жалоба</h1>
+  <p class="muted">Напишите, что случилось. Администратор увидит имя, почту и текст обращения.</p>
+</header>
+
+<section class="card form-card">
+  <form method="post" autocomplete="on">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Имя
+      <input type="text" name="name" value="{{ name }}" autocomplete="name" maxlength="160" required>
+    </label>
+    <label>Эл. почта
+      <input type="email" name="email" value="{{ email }}" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required>
+    </label>
+    <label>Тип
+      <select name="kind">
+        {% for code, label in kinds.items() %}
+        <option value="{{ code }}" {% if kind == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Описание
+      <textarea name="body" rows="6" maxlength="4000" required placeholder="Что произошло и чем помочь">{{ body }}</textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">Отправить</button>
+  </form>
+</section>
+
+{% if sent %}
+<section class="card">
+  <h2>Ваши обращения</h2>
+  <ul class="sent-list">
+    {% for item in sent %}
+    <li>
+      <strong>{{ kinds.get(item.kind, item.kind) }}</strong>
+      <span class="pill {% if item.read_at %}ok{% else %}wait{% endif %}">{% if item.read_at %}прочитано{% else %}отправлено{% endif %}</span>
+      <small class="muted">{{ item.created_at|dt }}</small>
+      <p class="message-body">{{ item.body }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

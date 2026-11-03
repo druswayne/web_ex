@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     full_name = db.Column(db.String(160), nullable=False)
+    email = db.Column(db.String(254), unique=True, nullable=True, index=True)
     role = db.Column(db.String(20), nullable=False, default="student", index=True)
     level_band = db.Column(db.String(16), nullable=True)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
@@ -47,6 +48,12 @@ class User(UserMixin, db.Model):
     achievements = db.relationship("UserAchievement", backref="user", cascade="all, delete-orphan")
     theory_chats = db.relationship(
         "TheoryChatMessage", backref="user", cascade="all, delete-orphan"
+    )
+    balance_byn = db.Column(
+        db.Numeric(12, 4), nullable=False, default=0, server_default="0"
+    )
+    balance_entries = db.relationship(
+        "BalanceLedger", backref="user", cascade="all, delete-orphan"
     )
 
     def set_password(self, raw: str) -> None:
@@ -73,6 +80,22 @@ class User(UserMixin, db.Model):
     @classmethod
     def username_taken(cls, value: str, exclude_id: int | None = None) -> bool:
         user = cls.find_by_username(value)
+        return user is not None and user.id != exclude_id
+
+    @staticmethod
+    def normalize_email(value: str) -> str:
+        return (value or "").strip().casefold()
+
+    @classmethod
+    def find_by_email(cls, value: str) -> User | None:
+        key = cls.normalize_email(value)
+        if not key:
+            return None
+        return cls.query.filter(func.lower(cls.email) == key).first()
+
+    @classmethod
+    def email_taken(cls, value: str, exclude_id: int | None = None) -> bool:
+        user = cls.find_by_email(value)
         return user is not None and user.id != exclude_id
 
     @property
@@ -199,6 +222,46 @@ class UserAchievement(db.Model):
     earned_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class BalanceLedger(db.Model):
+    """Движение баланса: резерв на запрос, фактическое списание или правка администратора."""
+
+    __tablename__ = "balance_ledger"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    amount_byn = db.Column(db.Numeric(12, 4), nullable=False)
+    balance_after = db.Column(db.Numeric(12, 4), nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="settled", index=True)
+    kind = db.Column(db.String(16), nullable=False)
+    ref = db.Column(db.String(40), nullable=False, default="", index=True)
+    details = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+SUPPORT_KINDS = {
+    "question": "Вопрос",
+    "complaint": "Жалоба",
+    "other": "Другое",
+}
+
+
+class SupportMessage(db.Model):
+    """Вопрос, жалоба или другое обращение ученика к администратору."""
+
+    __tablename__ = "support_messages"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    kind = db.Column(db.String(20), nullable=False, default="question", index=True)
+    name = db.Column(db.String(160), nullable=False)
+    email = db.Column(db.String(254), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    read_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    author = db.relationship("User", foreign_keys=[user_id])
+
+
 class TheoryChatMessage(db.Model):
     __tablename__ = "theory_chat_messages"
 
@@ -207,27 +270,49 @@ class TheoryChatMessage(db.Model):
     lesson_number = db.Column(db.Integer, nullable=False, index=True)
     role = db.Column(db.String(16), nullable=False)
     content = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="ready", server_default="ready")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 def ensure_schema() -> None:
     """Добавляет колонки, которых нет в уже существующей базе."""
     inspector = inspect(db.engine)
-    if "lesson_progress" not in inspector.get_table_names():
-        return
-    cols = {c["name"] for c in inspector.get_columns("lesson_progress")}
+    names = set(inspector.get_table_names())
     alters: list[str] = []
-    if "theory_read_seconds" not in cols:
-        alters.append(
-            "ALTER TABLE lesson_progress "
-            "ADD COLUMN theory_read_seconds INTEGER DEFAULT 0"
-        )
-    if "theory_video_completed_at" not in cols:
-        coltype = "DATETIME" if db.engine.dialect.name == "sqlite" else "TIMESTAMP"
-        alters.append(
-            "ALTER TABLE lesson_progress "
-            f"ADD COLUMN theory_video_completed_at {coltype}"
-        )
+    if "lesson_progress" in names:
+        cols = {c["name"] for c in inspector.get_columns("lesson_progress")}
+        if "theory_read_seconds" not in cols:
+            alters.append(
+                "ALTER TABLE lesson_progress "
+                "ADD COLUMN theory_read_seconds INTEGER DEFAULT 0"
+            )
+        if "theory_video_completed_at" not in cols:
+            coltype = "DATETIME" if db.engine.dialect.name == "sqlite" else "TIMESTAMP"
+            alters.append(
+                "ALTER TABLE lesson_progress "
+                f"ADD COLUMN theory_video_completed_at {coltype}"
+            )
+    if "users" in names:
+        cols = {c["name"] for c in inspector.get_columns("users")}
+        if "balance_byn" not in cols:
+            alters.append(
+                "ALTER TABLE users ADD COLUMN balance_byn NUMERIC(12, 4) NOT NULL DEFAULT 0"
+            )
+        if "email" not in cols:
+            alters.append("ALTER TABLE users ADD COLUMN email VARCHAR(254)")
+        indexes = inspector.get_indexes("users")
+        uniques = inspector.get_unique_constraints("users")
+        email_unique = any(
+            idx.get("unique") and list(idx.get("column_names") or []) == ["email"] for idx in indexes
+        ) or any(list(uc.get("column_names") or []) == ["email"] for uc in uniques)
+        if not email_unique:
+            alters.append("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)")
+    if "theory_chat_messages" in names:
+        cols = {c["name"] for c in inspector.get_columns("theory_chat_messages")}
+        if "status" not in cols:
+            alters.append(
+                "ALTER TABLE theory_chat_messages ADD COLUMN status VARCHAR(16) DEFAULT 'ready'"
+            )
     if not alters:
         return
     with db.engine.begin() as conn:

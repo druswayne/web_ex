@@ -113,8 +113,11 @@ def bootstrap_student(user: User) -> None:
     set_access(user.id, 1, True, source="progress")
 
 
+VIDEO_WATCH_RATIO = 0.90
+
+
 def theory_done(progress: LessonProgress) -> bool:
-    return progress.theory_completed_at is not None
+    return bool(progress.theory_completed_at or progress.theory_video_completed_at)
 
 
 def format_duration(seconds: int | None) -> str:
@@ -185,8 +188,8 @@ def mark_theory_video(
     seen = float(watched or 0)
     if dur < 1 or seen < 0:
         return progress
-    need = min(dur * 0.92, max(0.0, dur - 0.4))
-    if seen + 0.05 < need:
+    need = dur * VIDEO_WATCH_RATIO
+    if seen + 0.15 < need:
         return progress
     progress.theory_video_completed_at = utcnow()
     progress.updated_at = utcnow()
@@ -196,6 +199,7 @@ def mark_theory_video(
         lesson_number=lesson_number,
         details={"watched": round(seen, 1), "duration": round(dur, 1)},
     )
+    grant_achievements(user)
     return progress
 
 
@@ -530,7 +534,7 @@ def lesson_success_map(user_id: int) -> dict[int, dict[str, int]]:
 
 
 ACHIEVEMENTS = [
-    ("first_theory", "Первая теория", "Прочитана теория первого занятия"),
+    ("first_theory", "Первая теория", "Пройдена теория первого занятия"),
     ("first_test", "Теоретик", "Сдан первый тест на 80% и выше"),
     ("first_practice", "Практик", "Засчитано первое задание практической части"),
     ("perfect_test", "Без ошибок", "Тест сдан на 100%"),
@@ -571,7 +575,7 @@ def grant_achievements(user: User) -> None:
         have.add(code)
         log_activity(user.id, "achievement", details={"code": code, "title": meta[1]})
 
-    if any(p.theory_completed_at for p in progresses):
+    if any(theory_done(p) for p in progresses):
         add("first_theory")
     if any(p.test_passed_at for p in progresses):
         add("first_test")

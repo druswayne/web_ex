@@ -13,18 +13,19 @@
 </form>
 <div class="table-wrap card">
   <table>
-    <thead><tr><th>Имя</th><th>Логин</th><th>Уровень</th><th>Пройдено</th><th></th></tr></thead>
+    <thead><tr><th>Имя</th><th>Логин</th><th>Уровень</th><th>Баланс</th><th>Пройдено</th><th></th></tr></thead>
     <tbody>
       {% for r in rows %}
       <tr>
         <td>{{ r.user.full_name }}{% if not r.user.is_active %} <span class="pill bad">откл.</span>{% endif %}</td>
-        <td>{{ r.user.username }}</td>
+        <td>{{ r.user.username }}{% if r.user.email %}<div class="muted">{{ r.user.email }}</div>{% endif %}</td>
         <td>{{ LEVEL_LABELS.get(r.user.level_band, r.user.level_band) }}</td>
+        <td>{{ r.user.balance_byn|byn }}</td>
         <td>{{ r.done }} / {{ r.total }}</td>
         <td><a href="{{ url_for('admin.student_detail', user_id=r.user.id) }}">карточка</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="muted">Никого не найдено.</td></tr>
+      <tr><td colspan="6" class="muted">Никого не найдено.</td></tr>
       {% endfor %}
     </tbody>
   </table>

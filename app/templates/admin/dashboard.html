@@ -13,13 +13,14 @@
 <div class="table-wrap card">
   <table>
     <thead>
-      <tr><th>Ученик</th><th>Уровень</th><th>Прогресс</th><th>Последний вход</th></tr>
+      <tr><th>Ученик</th><th>Уровень</th><th>Баланс</th><th>Прогресс</th><th>Последний вход</th></tr>
     </thead>
     <tbody>
       {% for c in cards %}
       <tr>
         <td><a href="{{ url_for('admin.student_detail', user_id=c.user.id) }}">{{ c.user.full_name }}</a><div class="muted">{{ c.user.username }}</div></td>
         <td>{{ LEVEL_LABELS.get(c.user.level_band, c.user.level_band) }}</td>
+        <td>{{ c.user.balance_byn|byn }}</td>
         <td>
           <div class="bar"><i style="width: {{ c.pct }}%"></i></div>
           <small>{{ c.done }} / {{ c.total }}</small>
@@ -27,7 +28,7 @@
         <td>{{ c.last|dt }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="4" class="muted">Пока нет учеников.</td></tr>
+      <tr><td colspan="5" class="muted">Пока нет учеников.</td></tr>
       {% endfor %}
     </tbody>
   </table>

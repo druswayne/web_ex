@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 from flask import (
@@ -16,19 +17,33 @@ from flask import (
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 
-from ..ai_checker import ai_configured, prepare_photo
+from ..ai_checker import (
+    ai_configured,
+    prepare_photo,
+)
+from ..billing import (
+    affordable,
+    estimate_messages_tokens,
+    format_byn,
+    insufficient_message,
+    quote_tokens,
+)
 from ..check_jobs import (
     PENDING,
     pending_assignment_ids,
     start_practice_check,
     sweep_stale_pending,
 )
-from ..config import Config, UPLOADS_DIR
+from ..accounts import email_error, normalize_email, password_error
+from ..config import LEVEL_BANDS, UPLOADS_DIR
 from ..content import display_prompt, find_lesson_video, get_bank, render_markdown
 from ..models import (
     PracticeAttempt,
+    SUPPORT_KINDS,
+    SupportMessage,
     TestAttempt,
     TheoryChatMessage,
+    User,
     db,
     utcnow,
 )
@@ -43,10 +58,23 @@ from ..progress import (
     mark_theory_video,
     record_test_attempt,
     refresh_practice_progress,
+    sync_assignments_after_level_change,
     test_done,
     theory_done,
 )
-from ..theory_tutor import MAX_QUESTION, ask_tutor, format_message_html
+from ..theory_tutor import (
+    MAX_QUESTION,
+    build_tutor_messages,
+    format_message_html,
+    tutor_completion_cap,
+)
+from ..tutor_jobs import (
+    PENDING as TUTOR_PENDING,
+    PLACEHOLDER as TUTOR_PLACEHOLDER,
+    pending_tutor_message,
+    start_tutor_reply,
+    sweep_stale_tutor,
+)
 from . import student_required
 
 bp = Blueprint("student", __name__)
@@ -84,12 +112,6 @@ def dashboard():
         if st["unlocked"] and not st["practice"]:
             current = (lsn, st)
             break
-    recent_tests = (
-        TestAttempt.query.filter_by(user_id=current_user.id)
-        .order_by(TestAttempt.created_at.desc())
-        .limit(5)
-        .all()
-    )
     return render_template(
         "student/dashboard.html",
         lessons=bank.all(),
@@ -102,9 +124,129 @@ def dashboard():
         practice_correct=practice_correct,
         practice_total=practice_total,
         current=current,
-        recent_tests=recent_tests,
         success=lesson_success_map(current_user.id),
     )
+
+
+def _profile_page(email: str, level_band: str):
+    return render_template("student/profile.html", email=email, level_band=level_band)
+
+
+@bp.route("/cabinet/profile", methods=["GET", "POST"])
+@student_required
+def profile():
+    if request.method == "GET":
+        return _profile_page(current_user.email or "", current_user.level_band or "1-2")
+    if request.form.get("action") == "password":
+        current = request.form.get("current_password") or ""
+        new = request.form.get("new_password") or ""
+        confirm = request.form.get("new_password2") or ""
+        error = None
+        if not current_user.check_password(current):
+            error = "Текущий пароль неверный."
+        elif new != confirm:
+            error = "Пароль и подтверждение не совпадают."
+        else:
+            error = password_error(
+                new,
+                username=current_user.username,
+                email=current_user.email or "",
+            )
+        if error is None and current_user.check_password(new):
+            error = "Новый пароль совпадает с текущим."
+        if error:
+            flash(error, "warning")
+            return _profile_page(current_user.email or "", current_user.level_band or "1-2")
+        current_user.set_password(new)
+        log_activity(current_user.id, "password_changed", actor_id=current_user.id)
+        db.session.commit()
+        flash("Пароль изменён.", "success")
+        return redirect(url_for("student.profile"))
+
+    email = (request.form.get("email") or "").strip()
+    level_band = request.form.get("level_band") or current_user.level_band
+    error = email_error(email)
+    if error is None and level_band not in LEVEL_BANDS:
+        error = "Выберите уровень заданий."
+    if error is None and User.email_taken(email, exclude_id=current_user.id):
+        error = "Такая почта уже используется."
+    if error:
+        flash(error, "warning")
+        return _profile_page(email, level_band if level_band in LEVEL_BANDS else current_user.level_band)
+    old_level = current_user.level_band
+    current_user.email = normalize_email(email)
+    if level_band in LEVEL_BANDS:
+        current_user.level_band = level_band
+    if old_level != current_user.level_band:
+        sync_assignments_after_level_change(current_user, current_user.level_band)
+    log_activity(
+        current_user.id,
+        "profile_updated",
+        actor_id=current_user.id,
+        details={"old_level": old_level, "new_level": current_user.level_band},
+    )
+    db.session.commit()
+    flash("Профиль сохранён.", "success")
+    return redirect(url_for("student.profile"))
+
+
+def _support_form(name: str, email: str, kind: str, body: str):
+    sent = (
+        SupportMessage.query.filter_by(user_id=current_user.id)
+        .order_by(SupportMessage.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return render_template(
+        "student/messages.html",
+        name=name,
+        email=email,
+        kind=kind if kind in SUPPORT_KINDS else "question",
+        body=body,
+        kinds=SUPPORT_KINDS,
+        sent=sent,
+    )
+
+
+@bp.route("/cabinet/messages", methods=["GET", "POST"])
+@student_required
+def messages():
+    name = current_user.full_name
+    email = current_user.email or ""
+    kind = "question"
+    body = ""
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+        email = (request.form.get("email") or "").strip()
+        kind = (request.form.get("kind") or "").strip()
+        body = (request.form.get("body") or "").strip()
+        error = None
+        if len(name) < 2 or len(name) > 160:
+            error = "Укажите имя — от 2 до 160 символов."
+        elif email_error(email):
+            error = email_error(email)
+        elif kind not in SUPPORT_KINDS:
+            error = "Выберите, это вопрос, жалоба или другое."
+        elif len(body) < 10:
+            error = "Опишите вопрос или проблему подробнее, хотя бы в паре предложений."
+        elif len(body) > 4000:
+            error = "Текст слишком длинный. Сократите его до 4000 символов."
+        if error:
+            flash(error, "warning")
+            return _support_form(name, email, kind, body)
+        db.session.add(
+            SupportMessage(
+                user_id=current_user.id,
+                kind=kind,
+                name=name,
+                email=normalize_email(email),
+                body=body,
+            )
+        )
+        db.session.commit()
+        flash("Сообщение отправлено. Администратор его увидит.", "success")
+        return redirect(url_for("student.messages"))
+    return _support_form(name, email, kind, body)
 
 
 @bp.route("/lessons/<int:number>")
@@ -121,7 +263,12 @@ def lesson(number: int):
         st = lesson_state(current_user, number)
     log_activity(current_user.id, "lesson_open", lesson_number=number)
     db.session.commit()
-    return render_template("student/lesson.html", lesson=lsn, state=st)
+    return render_template(
+        "student/lesson.html",
+        lesson=lsn,
+        state=st,
+        has_video=find_lesson_video(number) is not None,
+    )
 
 
 @bp.route("/lessons/<int:number>/theory", methods=["GET", "POST"])
@@ -166,7 +313,6 @@ def theory(number: int):
         state=st,
         video_name=video_name,
         video_done=video_done,
-        text_unlocked=not video_name or video_done,
     )
 
 
@@ -194,15 +340,9 @@ def theory_video(number: int):
         {
             "ok": True,
             "completed": bool(progress.theory_video_completed_at),
+            "test_open": theory_done(progress),
         }
     )
-
-
-def _theory_text_open(number: int) -> bool:
-    if not find_lesson_video(number):
-        return True
-    progress = lesson_state(current_user, number)["progress"]
-    return bool(progress.theory_video_completed_at)
 
 
 def _chat_rows(number: int):
@@ -213,8 +353,38 @@ def _chat_rows(number: int):
     )
 
 
+def _ready_chat_history(number: int) -> list[dict[str, str]]:
+    return [
+        {"role": row.role, "content": row.content}
+        for row in _chat_rows(number)
+        if (row.status or "ready") == "ready" and (row.content or "").strip()
+    ]
+
+
+def _tutor_quote(number: int, question: str):
+    lesson = _lesson(number)
+    messages = build_tutor_messages(
+        title=lesson.title,
+        number=lesson.number,
+        theory_md=lesson.theory_body,
+        history=_ready_chat_history(number),
+        question=question,
+    )
+    return quote_tokens(estimate_messages_tokens(messages), tutor_completion_cap())
+
+
 def _chat_payload(row: TheoryChatMessage) -> dict:
-    return {"id": row.id, "role": row.role, "html": format_message_html(row.role, row.content)}
+    pending = (row.status or "ready") == TUTOR_PENDING
+    if pending:
+        html = f"<p>{TUTOR_PLACEHOLDER}</p>"
+    else:
+        html = format_message_html(row.role, row.content)
+    return {
+        "id": row.id,
+        "role": row.role,
+        "html": html,
+        "pending": pending,
+    }
 
 
 @bp.route("/lessons/<int:number>/theory/chat", methods=["GET", "POST"])
@@ -222,11 +392,14 @@ def _chat_payload(row: TheoryChatMessage) -> dict:
 def theory_chat(number: int):
     if not is_unlocked(current_user, number):
         abort(403)
-    if not _theory_text_open(number):
-        return jsonify({"ok": False, "error": "Сначала досмотрите видеоурок."}), 403
-    lsn = _lesson(number)
+    _lesson(number)
+    sweep_stale_tutor()
     if request.method == "GET":
-        return jsonify({"ok": True, "messages": [_chat_payload(row) for row in _chat_rows(number)]})
+        return jsonify({
+            "ok": True,
+            "messages": [_chat_payload(row) for row in _chat_rows(number)],
+            "balance": format_byn(current_user.balance_byn),
+        })
     if not ai_configured():
         return jsonify(
             {"ok": False, "error": "Помощник пока не настроен. Администратору нужно указать ключ API."}
@@ -237,31 +410,50 @@ def theory_chat(number: int):
         return jsonify({"ok": False, "error": "Напишите вопрос по материалу занятия."}), 400
     if len(question) > MAX_QUESTION:
         question = question[:MAX_QUESTION]
-    history = [{"role": row.role, "content": row.content} for row in _chat_rows(number)]
-    answer = ask_tutor(
-        title=lsn.title,
-        number=lsn.number,
-        theory_md=lsn.theory_body,
-        history=history,
-        question=question,
-        model=Config.AI_MODEL,
-    )
+    existing = pending_tutor_message(current_user.id, number)
+    if existing is not None:
+        return jsonify(
+            {
+                "ok": False,
+                "pending": True,
+                "error": "Помощник ещё отвечает. Подождите немного.",
+                "assistant_id": existing.id,
+            }
+        ), 409
+    need = _tutor_quote(number, question)
+    ok, balance = affordable(current_user.id, need)
+    if not ok:
+        return jsonify({
+            "ok": False,
+            "error": insufficient_message(),
+            "balance": format_byn(balance),
+        }), 402
     user_row = TheoryChatMessage(
         user_id=current_user.id,
         lesson_number=number,
         role="user",
         content=question,
+        status="ready",
     )
     bot_row = TheoryChatMessage(
         user_id=current_user.id,
         lesson_number=number,
         role="assistant",
-        content=answer,
+        content=TUTOR_PLACEHOLDER,
+        status=TUTOR_PENDING,
     )
     db.session.add(user_row)
     db.session.add(bot_row)
     db.session.commit()
-    return jsonify({"ok": True, "user": _chat_payload(user_row), "assistant": _chat_payload(bot_row)})
+    start_tutor_reply(current_app._get_current_object(), bot_row.id)
+    return jsonify(
+        {
+            "ok": True,
+            "pending": True,
+            "user": _chat_payload(user_row),
+            "assistant": _chat_payload(bot_row),
+        }
+    )
 
 
 @bp.route("/lessons/<int:number>/theory/chat/clear", methods=["POST"])
@@ -269,8 +461,6 @@ def theory_chat(number: int):
 def theory_chat_clear(number: int):
     if not is_unlocked(current_user, number):
         abort(403)
-    if not _theory_text_open(number):
-        return jsonify({"ok": False, "error": "Сначала досмотрите видеоурок."}), 403
     TheoryChatMessage.query.filter_by(user_id=current_user.id, lesson_number=number).delete()
     db.session.commit()
     return jsonify({"ok": True})
@@ -285,7 +475,13 @@ def test(number: int):
     lsn = _lesson(number)
     st = lesson_state(current_user, number)
     if not theory_done(st["progress"]):
-        flash("Сначала дочитайте теорию до конца — тогда откроется тест.", "info")
+        if find_lesson_video(number):
+            flash(
+                "Сначала пройдите теорию: досмотрите видео на 90% без перемотки вперёд или дочитайте текст до конца.",
+                "info",
+            )
+        else:
+            flash("Сначала дочитайте теорию до конца — тогда откроется тест.", "info")
         return redirect(url_for("student.theory", number=number))
     if request.method == "POST":
         questions_src = lsn.test_for(current_user.level_band)
@@ -446,8 +642,19 @@ def practice_submit(number: int, assignment_id: int):
         for a in PracticeAttempt.query.filter_by(assignment_id=assignment.id)
         .order_by(PracticeAttempt.attempt_no.asc())
         .all()
-        if (a.ai_feedback or "").strip() and a.ai_verdict not in {"unclear", "error", PENDING}
+        if (a.ai_feedback or "").strip() and a.ai_verdict not in {"unclear", "error", PENDING, "running"}
     ]
+    if ai_configured():
+        can_pay, _balance = affordable(current_user.id, Decimal("0.0001"))
+        if not can_pay:
+            for path in (raw_path, proc_path):
+                try:
+                    if path.is_file():
+                        path.unlink()
+                except OSError:
+                    pass
+            flash(insufficient_message(), "warning")
+            return redirect(url_for("student.practice", number=number, task=assignment.id))
     attempt = PracticeAttempt(
         assignment_id=assignment.id,
         user_id=current_user.id,

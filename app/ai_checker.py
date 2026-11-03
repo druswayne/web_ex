@@ -13,6 +13,7 @@ from typing import Any
 from dotenv import load_dotenv
 from PIL import Image, ImageOps
 
+from .billing import ModelUsage, absorb_usage, estimate_image_tokens, estimate_text_tokens, usage_from_response
 from .config import PROJECT_ROOT, WEB_ROOT
 
 load_dotenv(WEB_ROOT / ".env")
@@ -297,6 +298,71 @@ def _is_transient(exc: BaseException) -> bool:
     return bool(_TRANSIENT_RE.search(str(exc)))
 
 
+def check_completion_cap() -> int:
+    return int(os.getenv("AI_CHECK_MAX_TOKENS") or "8192")
+
+
+def practice_user_text(
+    *,
+    task_md: str,
+    attempt_no: int = 1,
+    previous_feedback: list[str] | None = None,
+) -> str:
+    level = _hint_level(attempt_no)
+    prev = [p.strip() for p in (previous_feedback or []) if (p or "").strip()]
+    prev_block = ""
+    if prev:
+        numbered = "\n".join(f"- попытка {i}: {text}" for i, text in enumerate(prev, 1))
+        prev_block = (
+            "\n\nПодсказки, которые ученик уже получил (не повторяй их дословно, "
+            f"сделай следующую конкретнее по уровню {level}):\n{numbered}"
+        )
+    return (
+        "Условие задачи (Markdown/LaTeX):\n"
+        f"{task_md.strip()}\n\n"
+        "На фото — рукописное решение ученика. Эталонного ответа нет: реши задачу сам и сверь ход ученика.\n"
+        f"Это попытка №{max(1, int(attempt_no or 1))}.\n"
+        f"{_HINT_LEVELS[level]}"
+        f"{prev_block}\n\n"
+        "Сначала глубоко проверь каждый шаг (Think), затем верни только JSON."
+    )
+
+
+def practice_prompt_tokens(
+    *,
+    task_md: str,
+    image_path: Path,
+    attempt_no: int = 1,
+    previous_feedback: list[str] | None = None,
+) -> int:
+    text = practice_user_text(
+        task_md=task_md,
+        attempt_no=attempt_no,
+        previous_feedback=previous_feedback,
+    )
+    return (
+        8
+        + estimate_text_tokens(SYSTEM_PROMPT)
+        + estimate_text_tokens(text)
+        + estimate_image_tokens(image_path)
+    )
+
+
+def call_chat(client: Any, payload: dict[str, Any]) -> tuple[str, ModelUsage]:
+    body = dict(payload)
+    extra = dict(body.get("extra_body") or {})
+    extra["usage"] = {"include": True}
+    body["extra_body"] = extra
+    resp = client.chat.completions.create(**body)
+    usage = usage_from_response(resp)
+    try:
+        text = _message_text(resp)
+    except Exception as exc:
+        exc.usage = usage  # type: ignore[attr-defined]
+        raise
+    return text, usage
+
+
 def _complete_once(
     client: Any,
     kwargs: dict[str, Any],
@@ -304,7 +370,7 @@ def _complete_once(
     *,
     use_reasoning: bool,
     json_mode: bool,
-) -> str:
+) -> tuple[str, ModelUsage]:
     payload = dict(kwargs)
     extra = dict(payload.pop("extra_body", {}) or {})
     if use_reasoning:
@@ -315,11 +381,10 @@ def _complete_once(
         payload["extra_body"] = extra
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
-    resp = client.chat.completions.create(**payload)
-    return _message_text(resp)
+    return call_chat(client, payload)
 
 
-def _request_model_text(client: Any, kwargs: dict[str, Any], model: str) -> str:
+def _request_model_text(client: Any, kwargs: dict[str, Any], model: str) -> tuple[str, ModelUsage]:
     """Think + JSON, затем упрощённые варианты при сбое провайдера."""
     variants = (
         (True, True),
@@ -327,22 +392,25 @@ def _request_model_text(client: Any, kwargs: dict[str, Any], model: str) -> str:
         (False, True),
         (False, False),
     )
+    bucket = ModelUsage()
     last_err: Exception | None = None
     for use_reasoning, json_mode in variants:
         attempts = 2 if use_reasoning else 1
         for i in range(attempts):
             try:
-                text = _complete_once(
+                text, one = _complete_once(
                     client,
                     kwargs,
                     model,
                     use_reasoning=use_reasoning,
                     json_mode=json_mode,
                 )
+                bucket.add(one)
                 if text.strip():
-                    return text
+                    return text, bucket
                 last_err = RuntimeError("empty_content")
             except Exception as exc:  # noqa: BLE001
+                absorb_usage(bucket, exc)
                 last_err = exc
                 err = str(exc)
                 log.warning("AI check request failed (reasoning=%s json=%s): %s", use_reasoning, json_mode, exc)
@@ -354,6 +422,7 @@ def _request_model_text(client: Any, kwargs: dict[str, Any], model: str) -> str:
                 if not _is_transient(exc) and not _PARAM_ERR_RE.search(err):
                     break
     if last_err:
+        last_err.usage = bucket  # type: ignore[attr-defined]
         raise last_err
     raise RuntimeError("empty_content")
 
@@ -366,6 +435,7 @@ def check_solution(
     attempt_no: int = 1,
     previous_feedback: list[str] | None = None,
 ) -> dict[str, Any]:
+    usage = ModelUsage()
     if not ai_configured():
         return {
             "verdict": "error",
@@ -373,26 +443,15 @@ def check_solution(
             "feedback": "Проверка ИИ не настроена. Администратору нужно указать OPENROUTER_API_KEY.",
             "observed": "",
             "raw": None,
+            "usage": usage,
         }
     data = image_path.read_bytes()
     b64 = base64.b64encode(data).decode("ascii")
     level = _hint_level(attempt_no)
-    prev = [p.strip() for p in (previous_feedback or []) if (p or "").strip()]
-    prev_block = ""
-    if prev:
-        numbered = "\n".join(f"- попытка {i}: {text}" for i, text in enumerate(prev, 1))
-        prev_block = (
-            "\n\nПодсказки, которые ученик уже получил (не повторяй их дословно, "
-            f"сделай следующую конкретнее по уровню {level}):\n{numbered}"
-        )
-    user_text = (
-        "Условие задачи (Markdown/LaTeX):\n"
-        f"{task_md.strip()}\n\n"
-        "На фото — рукописное решение ученика. Эталонного ответа нет: реши задачу сам и сверь ход ученика.\n"
-        f"Это попытка №{max(1, int(attempt_no or 1))}.\n"
-        f"{_HINT_LEVELS[level]}"
-        f"{prev_block}\n\n"
-        "Сначала глубоко проверь каждый шаг (Think), затем верни только JSON."
+    user_text = practice_user_text(
+        task_md=task_md,
+        attempt_no=attempt_no,
+        previous_feedback=previous_feedback,
     )
     client = _client()
     kwargs: dict[str, Any] = {
@@ -410,20 +469,25 @@ def check_solution(
                 ],
             },
         ],
-        "max_tokens": int(os.getenv("AI_CHECK_MAX_TOKENS") or "8192"),
+        "max_tokens": check_completion_cap(),
     }
     low = model.lower()
     if "gemini" in low or "gpt-4" in low or ("flash" in low and "gpt-5" not in low):
         kwargs["temperature"] = 0.1
     try:
-        content = _request_model_text(client, kwargs, model)
+        content, usage = _request_model_text(client, kwargs, model)
         parsed = _parse_json(content)
         if parsed.get("_parse_failed"):
             log.warning("AI check JSON parse failed, retrying once")
             time.sleep(0.8)
-            content = _complete_once(
-                client, kwargs, model, use_reasoning=True, json_mode=True
-            )
+            try:
+                content, extra = _complete_once(
+                    client, kwargs, model, use_reasoning=True, json_mode=True
+                )
+                usage.add(extra)
+            except Exception as exc:
+                absorb_usage(usage, exc)
+                raise
             parsed = _parse_json(content)
         if parsed.get("_parse_failed"):
             return {
@@ -432,8 +496,10 @@ def check_solution(
                 "feedback": "Не удалось проверить решение. Попробуйте ещё раз чуть позже.",
                 "observed": "",
                 "raw": None,
+                "usage": usage,
             }
-    except Exception:
+    except Exception as exc:
+        absorb_usage(usage, exc)
         log.exception("AI check failed")
         return {
             "verdict": "error",
@@ -441,6 +507,7 @@ def check_solution(
             "feedback": "Не удалось проверить решение. Попробуйте ещё раз чуть позже.",
             "observed": "",
             "raw": None,
+            "usage": usage,
         }
     verdict = str(parsed.get("verdict") or "").lower()
     is_correct = bool(parsed.get("is_correct"))
@@ -473,4 +540,5 @@ def check_solution(
         "feedback": feedback,
         "observed": str(parsed.get("observed") or ""),
         "raw": raw,
+        "usage": usage,
     }

@@ -6,7 +6,7 @@
   <div>
     <p class="eyebrow">{{ student.username }} · {{ level_label }}</p>
     <h1>{{ student.full_name }}</h1>
-    <p class="muted">Последний вход: {{ student.last_login_at|dt }}</p>
+    <p class="muted">{% if student.email %}{{ student.email }} · {% endif %}Последний вход: {{ student.last_login_at|dt }}</p>
   </div>
   <div class="hero-actions">
     <a class="btn btn-ghost" href="{{ url_for('admin.student_edit', user_id=student.id) }}">Изменить профиль</a>
@@ -15,6 +15,34 @@
       <button class="btn btn-danger" type="submit">Удалить аккаунт</button>
     </form>
   </div>
+</section>
+
+<section class="card form-card">
+  <h2>Баланс</h2>
+  <p class="muted">Сейчас {{ student.balance_byn|byn }}. При каждом запросе к ИИ списывается стоимость запроса и ответа, увеличенная на 40%.</p>
+  <form method="post" action="{{ url_for('admin.student_balance', user_id=student.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Новый баланс, Br
+      <input class="balance-field" type="text" name="balance" inputmode="decimal" value="{{ balance_input }}" required>
+    </label>
+    <button class="btn btn-primary" type="submit">Сохранить баланс</button>
+  </form>
+  {% if ledger %}
+  <h3>Последние операции</h3>
+  <ul class="timeline">
+    {% for row in ledger %}
+    <li>
+      <time>{{ row.created_at|dt }}</time>
+      <div>
+        {{ ledger_labels.get(row.kind, row.kind) }}
+        {% if row.status == 'held' %}· резерв{% endif %}
+        <strong>{{ row.amount_byn|byn_delta }}</strong>
+        <small class="muted">остаток {{ row.balance_after|byn }}</small>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
 </section>
 
 <section class="card">

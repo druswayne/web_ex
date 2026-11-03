@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.dashboard') }}">Кабинет</a></p>
+<header class="cabinet-page-head">
+  <p class="eyebrow">Личный кабинет</p>
+  <h1>Данные</h1>
+</header>
+
+<div class="profile-grid">
+<section class="card form-card">
+  <h2>Почта и уровень</h2>
+  <p class="readonly-field"><span>Логин</span> <strong>{{ current_user.username }}</strong></p>
+  <p class="field-hint">Логин меняет только администратор.</p>
+  <form method="post" autocomplete="on">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="profile">
+    <label>Эл. почта
+      <input type="email" name="email" value="{{ email }}" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required>
+    </label>
+    <label>Уровень заданий
+      <select name="level_band">
+        {% for b in LEVEL_BANDS %}
+        <option value="{{ b }}" {% if level_band == b %}selected{% endif %}>{{ LEVEL_LABELS[b] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="muted">Уровень можно менять вручную. Уже засчитанные задания практики останутся со старым уровнем. Нерешённые заменятся заданиями нового уровня.</p>
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+</section>
+
+<section class="card form-card">
+  <h2>Сменить пароль</h2>
+  <form method="post" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="password">
+    <label>Текущий пароль
+      <span class="secret">
+        <input type="password" name="current_password" autocomplete="current-password" required>
+        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+      </span>
+    </label>
+    <label>Новый пароль
+      <span class="secret">
+        <input type="password" name="new_password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+      </span>
+    </label>
+    <p class="field-hint">Не короче 8 символов. Подойдёт фраза, которую легко запомнить.</p>
+    <label>Подтверждение пароля
+      <span class="secret">
+        <input type="password" name="new_password2" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+      </span>
+    </label>
+    <button class="btn btn-primary" type="submit">Сохранить пароль</button>
+  </form>
+</section>
+</div>
+{% endblock %}

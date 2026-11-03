@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% set show_home_nav = true %}
+{% block full_title %}Регистрация · {{ course_title }}{% endblock %}
+{% block meta %}
+  {% set seo_title = "Регистрация — Математика 9" %}
+  {% set seo_description = "Создайте аккаунт и начните подготовку к выпускному экзамену по математике: теория, тесты и практика с первого занятия." %}
+  {% set seo_keywords = "регистрация, математика 9 класс, выпускной экзамен, онлайн курс" %}
+  {% set seo_url = site_base ~ url_for('auth.register') %}
+  {% set seo_json = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": seo_title,
+    "description": seo_description,
+    "url": seo_url,
+    "inLanguage": "ru",
+    "isPartOf": {"@type": "WebSite", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+  } %}
+  {% include "_public_meta.html" %}
+{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+{% block main_class %}auth-wrap{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <div class="auth-side">
+    <span class="brand-mark lg" aria-hidden="true"></span>
+    <h1>Готовимся к экзамену по математике</h1>
+    <p>35 занятий: теория, тест и практическая часть. Свой уровень, свой темп, понятный прогресс.</p>
+  </div>
+  <form method="post" class="auth-form" autocomplete="on">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>Регистрация</h2>
+    <p class="muted">После регистрации откроется первое занятие. Уровень заданий потом можно сменить в личном кабинете.</p>
+    {% if error %}<div class="flash flash-danger">{{ error }}</div>{% endif %}
+    <label>Логин
+      <input type="text" name="username" value="{{ form.username }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="32" required autofocus>
+    </label>
+    <p class="field-hint">От 3 до 32 символов: буквы, цифры, точка, дефис или подчёркивание.</p>
+    <label>Пароль
+      <span class="secret">
+        <input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+      </span>
+    </label>
+    <p class="field-hint">Не короче 8 символов. Подойдёт фраза, которую легко запомнить.</p>
+    <label>Подтверждение пароля
+      <span class="secret">
+        <input type="password" name="password2" autocomplete="new-password" minlength="8" maxlength="128" required>
+        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+      </span>
+    </label>
+    <label>Эл. почта
+      <input type="email" name="email" value="{{ form.email }}" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required>
+    </label>
+    <label>Стартовый уровень заданий
+      <select name="level_band" required>
+        {% for b in LEVEL_BANDS %}
+        <option value="{{ b }}" {% if form.level_band == b %}selected{% endif %}>{{ LEVEL_LABELS[b] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <p class="field-hint">Это стартовый уровень. В личном кабинете его можно изменить вручную.</p>
+    <button class="btn btn-primary btn-block" type="submit">Создать аккаунт</button>
+    <p class="auth-switch">Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войти</a></p>
+  </form>
+</section>
+{% endblock %}

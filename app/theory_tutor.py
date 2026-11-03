@@ -8,7 +8,14 @@ from typing import Any, Iterable
 
 from markupsafe import escape
 
-from .ai_checker import _client, _is_transient, _message_text, _PARAM_ERR_RE, ai_configured
+from .ai_checker import (
+    _PARAM_ERR_RE,
+    _client,
+    _is_transient,
+    ai_configured,
+    call_chat,
+)
+from .billing import ModelUsage, absorb_usage
 
 log = logging.getLogger(__name__)
 
@@ -56,20 +63,19 @@ def _theory_block(title: str, number: int, theory_md: str) -> str:
     )
 
 
-def ask_tutor(
+def tutor_completion_cap() -> int:
+    return int(os.getenv("AI_TUTOR_MAX_TOKENS") or "4096")
+
+
+def build_tutor_messages(
     *,
     title: str,
     number: int,
     theory_md: str,
     history: Iterable[dict[str, str]],
     question: str,
-    model: str,
-) -> str:
-    if not ai_configured():
-        return "Помощник пока не настроен. Администратору нужно указать ключ API."
+) -> list[dict[str, str]]:
     q = (question or "").strip()
-    if not q:
-        return "Напишите вопрос по материалу занятия."
     if len(q) > MAX_QUESTION:
         q = q[:MAX_QUESTION]
     messages: list[dict[str, str]] = [
@@ -83,13 +89,39 @@ def ask_tutor(
         kept = kept[-MAX_HISTORY:]
     for item in kept:
         messages.append({"role": item["role"], "content": item["content"].strip()})
-    messages.append({"role": "user", "content": q})
+    if q:
+        messages.append({"role": "user", "content": q})
+    return messages
+
+
+def ask_tutor(
+    *,
+    title: str,
+    number: int,
+    theory_md: str,
+    history: Iterable[dict[str, str]],
+    question: str,
+    model: str,
+) -> tuple[str, ModelUsage]:
+    usage = ModelUsage()
+    if not ai_configured():
+        return "Помощник пока не настроен. Администратору нужно указать ключ API.", usage
+    q = (question or "").strip()
+    if not q:
+        return "Напишите вопрос по материалу занятия.", usage
+    messages = build_tutor_messages(
+        title=title,
+        number=number,
+        theory_md=theory_md,
+        history=history,
+        question=q,
+    )
 
     client = _client()
     kwargs: dict[str, Any] = {
         "model": model,
         "messages": messages,
-        "max_tokens": int(os.getenv("AI_TUTOR_MAX_TOKENS") or "4096"),
+        "max_tokens": tutor_completion_cap(),
     }
     low = (model or "").lower()
     if "gemini" in low or "gpt-4" in low or ("flash" in low and "gpt-5" not in low):
@@ -101,14 +133,19 @@ def ask_tutor(
         attempts = 2 if with_reasoning else 1
         for i in range(attempts):
             payload = dict(kwargs)
+            extra: dict[str, Any] = {}
             if with_reasoning and effort not in {"off", "none", "0", "false", "no"}:
-                payload["extra_body"] = {"reasoning": {"effort": effort}}
+                extra["reasoning"] = {"effort": effort}
+            if extra:
+                payload["extra_body"] = extra
             try:
-                text = _message_text(client.chat.completions.create(**payload)).strip()
-                if text:
-                    return text
+                text, one = call_chat(client, payload)
+                usage.add(one)
+                if text.strip():
+                    return text.strip(), usage
                 last_err = RuntimeError("empty_content")
             except Exception as exc:  # noqa: BLE001
+                absorb_usage(usage, exc)
                 last_err = exc
                 log.warning("theory tutor failed (reasoning=%s): %s", with_reasoning, exc)
                 err = str(exc)
@@ -120,4 +157,4 @@ def ask_tutor(
                 if not _is_transient(exc) and not _PARAM_ERR_RE.search(err):
                     break
     log.exception("theory tutor failed: %s", last_err)
-    return "Не удалось получить ответ. Попробуйте ещё раз чуть позже."
+    return "Не удалось получить ответ. Попробуйте ещё раз чуть позже.", usage

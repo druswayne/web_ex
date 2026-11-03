@@ -10,7 +10,6 @@
      data-initial="{{ state.progress.theory_scroll_pct }}"
      data-done="{{ 1 if state.theory else 0 }}"
      data-video-done="{{ 1 if video_done else 0 }}"
-     data-text-unlocked="{{ 1 if text_unlocked else 0 }}"
      data-lesson="{{ lesson.number }}">
   <div class="bar bar-lg" id="theoryBarWrap" {% if video_name %}hidden{% endif %}>
     <i id="theoryBar" style="width: {{ state.progress.theory_scroll_pct }}%"></i>
@@ -25,21 +24,32 @@
   <p class="eyebrow">Занятие {{ lesson.number }}</p>
   <h1>{{ lesson.title }}</h1>
   {% if video_name %}
-  <p class="muted">Сначала короткий видеоурок, затем полный разбор в тексте — с формулами и примерами.</p>
+  <p class="muted">Выберите один способ. Теория засчитается, если досмотреть видео на 90% без перемотки вперёд или дочитать текст до конца.</p>
   {% else %}
-  <p class="muted">Видеоурок для этого занятия ещё готовится. Пока можно читать полный текстовый разбор.</p>
+  <p class="muted">Видеоурок для этого занятия ещё готовится. Дочитайте текст до конца — откроется тест.</p>
   {% endif %}
 </header>
 
 {% if video_name %}
-<section class="theory-pane theory-pane-video" id="theoryVideoPane">
+<div class="theory-choice" id="theoryChoice" role="group" aria-label="Как пройти теорию">
+  <button type="button" id="chooseVideo" aria-pressed="false">
+    <strong>Смотреть видео</strong>
+    <span id="chooseVideoNote">{% if video_done %}Просмотрено, теория засчитана{% else %}Зачёт после 90% без перемотки вперёд{% endif %}</span>
+  </button>
+  <button type="button" id="chooseText" aria-pressed="false">
+    <strong>Читать текст</strong>
+    <span id="chooseTextNote">{% if state.progress.theory_scroll_pct >= 98 %}Прочитано до конца{% else %}Зачёт, когда дочитаете до конца{% endif %}</span>
+  </button>
+</div>
+
+<section class="theory-pane theory-pane-video" id="theoryVideoPane" hidden>
   <div class="theory-pane-head">
     <div>
-      <p class="eyebrow">Вариант 1</p>
+      <p class="eyebrow">Видео</p>
       <h2>Краткий видеоурок</h2>
-      <p class="muted">Суть занятия за несколько минут. Нужно досмотреть до конца.</p>
+      <p class="muted">Перемотка вперёд недоступна, пока ролик не засчитан.</p>
     </div>
-    <span class="pill {% if video_done %}ok{% endif %}" id="theoryVideoPill">{% if video_done %}просмотрено{% else %}обязательно{% endif %}</span>
+    <span class="pill {% if video_done %}ok{% endif %}" id="theoryVideoPill">{% if video_done %}засчитано{% else %}нужно 90%{% endif %}</span>
   </div>
   <div class="theory-player" id="theoryPlayer">
     <video
@@ -57,47 +67,38 @@
     <div class="bar"><i id="theoryWatchBar" style="width: {{ 100 if video_done else 0 }}%"></i></div>
     <p class="theory-watch-hint" id="theoryWatchHint">
       {% if video_done %}
-      Видео просмотрено — текстовый разбор можно открывать в любой момент.
+      Видео засчитано. Можно перейти к тесту или открыть текст.
       {% else %}
-      Перемотка вперёд закрыта. Когда ролик закончится, откроется текстовый урок.
+      Просмотрено 0%. Для зачёта нужно 90% без перемотки вперёд.
       {% endif %}
     </p>
   </div>
 </section>
 {% endif %}
 
-<section class="theory-pane theory-pane-text" id="theoryTextCard" data-locked="{{ 0 if text_unlocked else 1 }}">
+<section class="theory-pane theory-pane-text" id="theoryTextCard" {% if video_name %}hidden{% endif %}>
+  {% if not video_name %}
   <div class="theory-pane-head">
     <div>
-      <p class="eyebrow">{% if video_name %}Вариант 2{% else %}Теория{% endif %}</p>
+      <p class="eyebrow">Теория</p>
       <h2>Полный урок с разбором</h2>
-      <p class="muted" id="theoryTextLead">
-        {% if not video_name %}
-        Текст, формулы и разобранные примеры.
-        {% elif text_unlocked %}
-        Текст, формулы и разобранные примеры. Можно открывать в любой момент.
-        {% else %}
-        Откроется после просмотра видео от начала до конца.
-        {% endif %}
-      </p>
+      <p class="muted">Текст, формулы и разобранные примеры.</p>
     </div>
-    {% if video_name %}
-    <button type="button" class="btn {% if text_unlocked %}btn-primary{% else %}btn-ghost{% endif %}" id="theoryTextToggle"
-            aria-expanded="false" aria-controls="theoryArticle"
-            {% if not text_unlocked %}aria-disabled="true"{% endif %}>
-      {% if text_unlocked %}Развернуть{% else %}Сначала видео{% endif %}
-    </button>
-    {% endif %}
   </div>
-  <article class="theory-article theory-source md-body" id="theoryArticle" {% if video_name %}hidden{% endif %}>
+  {% endif %}
+  <article class="theory-article theory-source md-body" id="theoryArticle">
     {{ lesson.theory_html }}
   </article>
 </section>
 
 <div class="end-cta" id="theoryCta" {% if not state.theory %}hidden{% endif %}>
   <div class="card">
-    <h2>Теория прочитана</h2>
-    <p>Можно переходить к тесту. Нужно набрать 80%.</p>
+    <h2 id="theoryCtaTitle">
+      {% if video_done and (state.progress.theory_scroll_pct or 0) < 98 %}Видео засчитано
+      {% elif state.theory %}Теория прочитана
+      {% else %}Теория пройдена{% endif %}
+    </h2>
+    <p id="theoryCtaLead">Можно переходить к тесту. Нужно набрать 80%.</p>
     <a class="btn btn-primary" href="{{ url_for('student.test', number=lesson.number) }}">Пройти тест</a>
   </div>
 </div>
@@ -107,7 +108,7 @@
      data-chat-url="{{ url_for('student.theory_chat', number=lesson.number) }}"
      data-clear-url="{{ url_for('student.theory_chat_clear', number=lesson.number) }}">
   <button type="button" class="tutor-fab" id="tutorFab"
-          {% if not text_unlocked %}hidden{% endif %}
+          {% if video_name %}hidden{% endif %}
           aria-haspopup="dialog" aria-expanded="false" aria-controls="tutorLayer"
           title="Спросить по теории">
     <span class="tutor-fab-pulse" aria-hidden="true"></span>
@@ -141,6 +142,9 @@
       </header>
       <div class="tutor-log" id="tutorLog"></div>
       <form class="tutor-form" id="tutorForm">
+        {% if current_user.balance_byn <= 0 %}
+        <p class="muted">Недостаточно средств на балансе.</p>
+        {% endif %}
         <label class="sr-only" for="tutorInput">Вопрос по уроку</label>
         <textarea id="tutorInput" rows="2" maxlength="2000" placeholder="Спросите, что непонятно в этом уроке"></textarea>
         <button type="submit" class="btn btn-primary" id="tutorSend">Спросить</button>

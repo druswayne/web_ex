@@ -35,7 +35,13 @@
     <b>1</b>
     <div>
       <h3>Теория</h3>
-      <p>{% if state.theory %}Прочитана{% else %}Сначала краткое видео, затем текстовый разбор до конца{% endif %}</p>
+      <p>
+        {% if state.theory and state.video and (state.progress.theory_scroll_pct or 0) >= 98 %}Видео и текст
+        {% elif state.video and state.theory %}Видео просмотрено
+        {% elif state.theory %}Прочитана
+        {% elif has_video %}Видео или текст — достаточно одного
+        {% else %}Читайте до конца страницы — откроется тест{% endif %}
+      </p>
     </div>
     <span class="pill {% if state.theory %}ok{% endif %}">{% if state.theory %}готово{% else %}открыто{% endif %}</span>
   </a>
