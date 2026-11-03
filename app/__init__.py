@@ -91,6 +91,15 @@ def create_app() -> Flask:
         from .ai_checker import ai_configured
 
         bank = get_bank()
+        static_dir = Path(app.static_folder or "")
+
+        def asset_v(filename: str) -> str:
+            path = static_dir / filename
+            try:
+                return str(int(path.stat().st_mtime))
+            except OSError:
+                return "1"
+
         configured = (app.config.get("PUBLIC_BASE_URL") or "").strip().rstrip("/")
         handle = (app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@")
         topup_url = ""
@@ -119,6 +128,7 @@ def create_app() -> Flask:
             "topup_url": topup_url,
             "contact_email": app.config.get("CONTACT_EMAIL") or "",
             "support_new": support_new,
+            "asset_v": asset_v,
         }
 
     from .views.auth import bp as auth_bp
