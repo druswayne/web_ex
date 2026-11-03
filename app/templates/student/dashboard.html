@@ -90,11 +90,12 @@
         </div>
         <strong class="tile-title">{{ lsn.title }}</strong>
         <div class="tile-meters">
-          <div>
+          <div class="tile-meter is-done">
             <span>пройдено {{ done_pct }}%</span>
             <div class="tile-bar"><i style="width: {{ done_pct }}%"></i></div>
           </div>
-          <div title="{% if sc %}{{ sc.ok }} из {{ sc.total }} попыток{% else %}пока нет попыток{% endif %}">
+          {% set hue = ((ok_pct / 100) ** 1.55 * 142)|round|int %}
+          <div class="tile-meter is-score{% if not sc %} is-empty{% endif %}" style="--hue: {{ hue }}" title="{% if sc %}{{ sc.ok }} из {{ sc.total }} попыток{% else %}пока нет попыток{% endif %}">
             <span>успешность {{ ok_pct }}%</span>
             <div class="tile-bar"><i style="width: {{ ok_pct }}%"></i></div>
           </div>

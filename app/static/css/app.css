@@ -290,6 +290,17 @@ a.lesson-tile:hover {
   height: 4px; background: #efe8dc; border-radius: 99px; overflow: hidden;
 }
 .tile-bar i { display: block; height: 100%; width: 0; background: var(--tile); border-radius: 99px; }
+.tile-meter.is-done .tile-bar i {
+  background: linear-gradient(90deg, var(--teal), #3aa89a);
+}
+.tile-meter.is-score span {
+  color: hsl(var(--hue) 72% 34%);
+}
+.tile-meter.is-score .tile-bar i {
+  background: hsl(var(--hue) 74% 42%);
+}
+.tile-meter.is-score.is-empty span { color: var(--muted); }
+.tile-meter.is-score.is-empty .tile-bar i { background: #c4b8a8; }
 .tile-meta {
   display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
   color: var(--muted); font-size: 12px;
