@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, inspect, text
@@ -50,7 +51,7 @@ class User(UserMixin, db.Model):
         "TheoryChatMessage", backref="user", cascade="all, delete-orphan"
     )
     balance_byn = db.Column(
-        db.Numeric(12, 4), nullable=False, default=0, server_default="0"
+        db.Numeric(12, 4), nullable=False, default=Decimal("2"), server_default="2"
     )
     balance_entries = db.relationship(
         "BalanceLedger", backref="user", cascade="all, delete-orphan"

@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 from flask_login import current_user, login_user, logout_user
 
 from ..accounts import email_error, normalize_email, password_error, username_error
-from ..config import LEVEL_BANDS
+from ..config import LEVEL_BANDS, Config
 from ..models import User, db, utcnow
 from ..progress import bootstrap_student, log_activity
 
@@ -84,6 +84,7 @@ def register():
                 role="student",
                 level_band=level_band,
                 is_active=True,
+                balance_byn=Config.STARTING_BALANCE_BYN,
             )
             user.set_password(password)
             user.last_login_at = utcnow()

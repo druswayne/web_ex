@@ -9,7 +9,7 @@ from sqlalchemy import or_
 
 from ..accounts import email_error, normalize_email
 from ..billing import byn_input, commit_with_balance, parse_byn
-from ..config import LEVEL_BANDS, LEVEL_LABELS, UPLOADS_DIR
+from ..config import LEVEL_BANDS, LEVEL_LABELS, UPLOADS_DIR, Config
 from ..content import HOMEWORK_SLOT_BASE, get_bank, normalize_band, render_markdown
 from ..content_edit import (
     questions_from_form,
@@ -80,7 +80,7 @@ def _form_balance(user: User | None) -> str:
     if request.method == "POST" and posted is not None:
         return posted
     if user is None:
-        return "0.00"
+        return byn_input(Config.STARTING_BALANCE_BYN)
     return byn_input(user.balance_byn)
 
 
@@ -314,7 +314,7 @@ def student_new():
         "admin/student_form.html",
         user=None,
         level_band="3-4",
-        balance_input="0.00",
+        balance_input=byn_input(Config.STARTING_BALANCE_BYN),
         email_input="",
     )
 

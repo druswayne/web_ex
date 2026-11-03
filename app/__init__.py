@@ -221,6 +221,7 @@ def _ensure_bootstrap() -> None:
             full_name=Config.ADMIN_NAME,
             role="admin",
             level_band=None,
+            balance_byn=0,
         )
         admin.set_password(Config.ADMIN_PASSWORD)
         db.session.add(admin)

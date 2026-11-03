@@ -148,6 +148,8 @@ class Config:
     # Цена для ученика = себестоимость × 20 (наценка 1900%).
     # При обычном режиме это около 20 Br с ученика за 4 недели.
     AI_PRICE_MARKUP = Decimal("20")
+    # Стартовый баланс нового ученика, белорусские рубли.
+    STARTING_BALANCE_BYN = Decimal("2")
     TEST_PASS_PERCENT = float(os.getenv("TEST_PASS_PERCENT", "80"))
     PRACTICE_PASS_PERCENT = float(os.getenv("PRACTICE_PASS_PERCENT", "80"))
 
