@@ -1470,7 +1470,11 @@ html:not(.cookie-ok) .to-top {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 14px 0 4px;
+  margin: 18px 0 2px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 248, 0.94);
 }
 .about-jump a {
   padding: 6px 12px;
@@ -1482,8 +1486,20 @@ html:not(.cookie-ok) .to-top {
   font-size: 14px;
 }
 .about-jump a:hover { border-color: var(--teal); text-decoration: none; color: var(--teal-dark); }
-.about-section { margin-top: 28px; }
-.about-section > h2 { margin-bottom: 6px; }
+.about-section {
+  margin-top: 20px;
+  padding: 24px 26px 26px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 10px 28px rgba(27, 42, 50, 0.05);
+  scroll-margin-top: 16px;
+}
+.about-section > h2 {
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
 .about-lead { margin: 0 0 14px; max-width: 68ch; line-height: 1.55; }
 .about-duo, .about-grid-2, .about-topics {
   display: grid;
@@ -1562,8 +1578,8 @@ html:not(.cookie-ok) .to-top {
 .about-levels span {
   padding: 8px 14px;
   border-radius: 999px;
-  background: var(--paper);
-  border: 1px solid var(--line);
+  background: #e7f3f1;
+  border: 1px solid #d3e6e2;
   font-weight: 800;
 }
 .about-facts {
@@ -1590,7 +1606,16 @@ html:not(.cookie-ok) .to-top {
 }
 .about-note p { margin: 0; line-height: 1.55; }
 .about-note p + p { margin-top: 8px; }
-.about-parent { margin-top: 16px; background: #f6f2ea; box-shadow: none; }
+.about-section .card,
+.about-section .about-step {
+  background: #f7f3ea;
+  box-shadow: none;
+}
+.about-duo .about-parent {
+  margin-top: 0;
+  background: #fff8ee;
+  border-color: #eadcc4;
+}
 .about-faq details { border-bottom: 1px solid var(--line); }
 .about-faq details:last-child { border-bottom: 0; }
 .about-faq summary {
@@ -1639,7 +1664,7 @@ html:not(.cookie-ok) .to-top {
 .about-principles h3 { font-size: 1rem; margin-bottom: 6px; }
 .about-principles p { margin: 0; line-height: 1.5; }
 .about-close {
-  margin-top: 28px;
+  margin-top: 20px;
   padding: 28px 32px;
   border-radius: var(--radius);
   background: linear-gradient(160deg, #0d6e6a, #163a40);
@@ -1659,6 +1684,7 @@ html:not(.cookie-ok) .to-top {
   .about-topics,
   .about-facts { grid-template-columns: 1fr; }
   .about-metrics { grid-template-columns: 1fr 1fr; }
+  .about-section { padding: 18px 16px 20px; }
   .about-hero-copy { padding: 22px 18px; }
   .about-hero-copy h1 { max-width: none; }
   .about-hero-actions .btn { width: 100%; }

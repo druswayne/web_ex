@@ -1,12 +1,14 @@
 """Снимает вертикальный Reels 9:16 по реальному кабинету ученика."""
 from __future__ import annotations
 
+import http.cookiejar
 import os
 import re
+import shutil
 import sys
 import threading
 import time
-import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -61,20 +63,22 @@ INIT_JS = r"""
       left: -80px; top: -80px;
     }
     #reel-overlay {
-      position: fixed; left: 50%; bottom: 12%;
+      position: fixed;
+      left: 50%;
+      bottom: 30%;
       transform: translateX(-50%);
       z-index: 2147483645; pointer-events: none;
       background: rgba(13, 110, 106, .94);
       color: #fffdf8;
       font-family: Manrope, system-ui, sans-serif;
       font-weight: 800;
-      font-size: 20px;
-      line-height: 1.28;
+      font-size: 22px;
+      line-height: 1.25;
       letter-spacing: -.03em;
       text-align: center;
-      padding: 14px 18px;
-      border-radius: 18px;
-      width: min(90vw, 460px);
+      padding: 12px 14px;
+      border-radius: 16px;
+      width: min(76vw, 420px);
       box-shadow: 0 14px 36px rgba(27,42,50,.28);
       opacity: 0;
       transition: opacity .28s ease;
@@ -108,65 +112,47 @@ INIT_JS = r"""
 })();
 """
 
-TITLE_HTML = """<!DOCTYPE html>
+def phrase_card(title: str, note: str = "", kicker: str = "") -> str:
+    kick = f'<p class="kick">{kicker}</p>' if kicker else ""
+    sub = f'<p class="note">{note}</p>' if note else ""
+    return f"""<!DOCTYPE html>
 <html lang="ru"><head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap" rel="stylesheet">
 <style>
-  html,body{margin:0;height:100%;}
-  body{
+  html,body{{margin:0;height:100%;}}
+  body{{
     display:flex;align-items:center;justify-content:center;
+    box-sizing:border-box;
+    padding:14vh 12% 26vh 12%;
     background:
-      radial-gradient(900px 500px at 20% -10%, #1a9b94 0%, transparent 46%),
-      radial-gradient(700px 420px at 110% 80%, #c97816 0%, transparent 42%),
+      radial-gradient(900px 500px at 18% -10%, #1a9b94 0%, transparent 46%),
+      radial-gradient(700px 420px at 120% 100%, #c97816 0%, transparent 42%),
       #0d6e6a;
-    color:#fffdf8;font-family:Manrope,system-ui,sans-serif;text-align:center;
-  }
-  .mark{width:58px;height:58px;border-radius:16px;margin:0 auto 28px;
-    background:conic-gradient(from 220deg,#7bc4b8,#fff6e8,#c97816,#0a4f4c);
-    box-shadow:inset 0 0 0 4px #fffdf8;}
-  h1{font-size:42px;line-height:1.12;font-weight:800;letter-spacing:-.04em;margin:0 28px;}
-  p{margin:22px 0 0;opacity:.86;font-weight:700;font-size:16px;}
-  .hero{animation:rise .9s ease both;}
-  @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+    color:#fffdf8;font-family:Manrope,Segoe UI,Arial,sans-serif;text-align:center;
+  }}
+  .hero{{animation:rise .8s ease both;width:100%;}}
+  .kick{{margin:0 0 12px;font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.82;}}
+  h1{{font-size:34px;line-height:1.16;font-weight:800;letter-spacing:-.04em;margin:0;}}
+  .note{{margin:16px 0 0;font-size:18px;font-weight:700;line-height:1.35;opacity:.92;}}
+  @keyframes rise{{from{{opacity:0;transform:translateY(16px)}}to{{opacity:1;transform:none}}}}
 </style></head>
-<body>
-  <div class="hero">
-    <div class="mark"></div>
-    <h1>Как мои ученики<br>сами готовятся<br>к экзамену</h1>
-    <p>математика · 9 класс</p>
-  </div>
-</body></html>
+<body><div class="hero">{kick}<h1>{title}</h1>{sub}</div></body></html>
 """
 
-END_HTML = """<!DOCTYPE html>
-<html lang="ru"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&display=swap" rel="stylesheet">
-<style>
-  html,body{margin:0;width:100%;height:100%;background:#0d6e6a;}
-  body{
-    min-height:100vh;min-height:100dvh;
-    display:flex;align-items:center;justify-content:center;
-    color:#fffdf8;font-family:Manrope,Arial,sans-serif;text-align:center;
-    background:
-      radial-gradient(900px 500px at 20% -10%, #1a9b94 0%, transparent 46%),
-      radial-gradient(700px 420px at 110% 80%, #c97816 0%, transparent 42%),
-      #0d6e6a;
-  }
-  .box{padding:28px 32px;animation:rise .9s ease both;}
-  h1{font-size:32px;line-height:1.18;font-weight:800;letter-spacing:-.04em;margin:0;}
-  p{margin:18px 0 0;opacity:.9;font-weight:700;font-size:17px;line-height:1.35;}
-  @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-</style></head>
-<body>
-  <div class="box">
-    <h1>Залог хорошей сдачи —<br>качественная подготовка</h1>
-    <p>Практика подстраивается<br>под уровень каждого ученика</p>
-  </div>
-</body></html>
-"""
+
+OPEN_CARDS = (
+    phrase_card("Много тем,<br>формул и задач", "Знакомо?", "Девятый класс"),
+    phrase_card("Экзамен в 9 классе —<br>это волнительно"),
+    phrase_card(
+        "Но к нему можно<br>подготовиться заранее",
+        "По порядку, без гонки в последний момент",
+    ),
+)
+END_HTML = phrase_card(
+    "Не оставляй всю программу<br>на последний момент",
+    "35 занятий по порядку.<br>Посмотри курс на сайте",
+)
 
 
 def reset_reel_user(app) -> None:
@@ -240,16 +226,16 @@ def overlay(page, text: str) -> None:
             el.id = "reel-overlay";
             (document.body || document.documentElement).appendChild(el);
             el.style.cssText = `
-              position: fixed; left: 50%; bottom: 9%;
+              position: fixed; left: 50%; bottom: 30%;
               transform: translateX(-50%);
               z-index: 2147483645; pointer-events: none;
               background: rgba(13, 110, 106, .95);
               color: #fffdf8;
               font-family: Manrope, Arial, sans-serif;
-              font-weight: 800; font-size: 22px; line-height: 1.28;
+              font-weight: 800; font-size: 22px; line-height: 1.25;
               letter-spacing: -.03em; text-align: center;
-              padding: 16px 20px; border-radius: 18px;
-              width: min(90vw, 460px);
+              padding: 12px 14px; border-radius: 16px;
+              width: min(76vw, 420px);
               box-shadow: 0 14px 36px rgba(27,42,50,.28);
               opacity: 0;
               transition: opacity .4s ease;
@@ -412,7 +398,75 @@ def encode_mp4(webm: Path, mp4: Path) -> None:
     subprocess.check_call(cmd)
 
 
-def record_reel(photo: Path) -> Path:
+def login_cookies() -> list[dict]:
+    jar = http.cookiejar.CookieJar()
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    html_page = opener.open(f"{BASE}/login", timeout=15).read().decode("utf-8", "replace")
+    match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html_page)
+    if not match:
+        match = re.search(r'value="([^"]+)"[^>]*name="csrf_token"', html_page)
+    token = match.group(1) if match else ""
+    data = urllib.parse.urlencode(
+        {"username": USER, "password": PASSWORD, "csrf_token": token}
+    ).encode()
+    opener.open(urllib.request.Request(f"{BASE}/login", data=data, method="POST"), timeout=15)
+    return [{"name": c.name, "value": c.value, "url": BASE + "/"} for c in jar]
+
+
+def seed_check(app, photo: Path) -> int | None:
+    from app.config import UPLOADS_DIR
+    from app.progress import refresh_practice_progress
+
+    with app.app_context():
+        user = User.find_by_username(USER)
+        if user is None:
+            return None
+        assignment = (
+            PracticeAssignment.query.filter_by(user_id=user.id, lesson_number=1, is_active=True)
+            .order_by(PracticeAssignment.slot.asc())
+            .first()
+        )
+        if assignment is None:
+            return None
+        folder = UPLOADS_DIR / "practice" / str(user.id) / str(assignment.id)
+        folder.mkdir(parents=True, exist_ok=True)
+        dest = folder / "solution.jpg"
+        shutil.copyfile(photo, dest)
+        rel = f"practice/{user.id}/{assignment.id}/solution.jpg"
+        assignment.is_correct = True
+        db.session.add(
+            PracticeAttempt(
+                assignment_id=assignment.id,
+                user_id=user.id,
+                attempt_no=1,
+                photo_filename=rel,
+                processed_filename=rel,
+                is_correct=True,
+                ai_verdict="correct",
+                ai_feedback="Выражение больше. Проверка помогает увидеть, что уже получается.",
+            )
+        )
+        refresh_practice_progress(user, 1)
+        db.session.commit()
+        return assignment.id
+
+
+def mark_theory_done(page) -> None:
+    page.evaluate(
+        """async () => {
+          const csrf = document.querySelector('meta[name=csrf-token]')?.content || window.csrfToken;
+          const url = document.querySelector('.theory-progress')?.dataset.progressUrl;
+          if (!url) return;
+          await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken': csrf},
+            body: JSON.stringify({pct:100, completed:true, seconds:12})
+          });
+        }"""
+    )
+
+
+def record_reel(photo: Path, cookies: list[dict], app) -> Path:
     from playwright.sync_api import sync_playwright
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -429,112 +483,146 @@ def record_reel(photo: Path) -> Path:
             locale="ru-RU",
         )
         context.add_init_script(INIT_JS)
+        context.add_cookies(
+            [{"name": "cookie_consent", "value": "accepted", "url": BASE + "/"}]
+        )
         page = context.new_page()
         page.set_default_timeout(25000)
 
-        page.set_content(TITLE_HTML, wait_until="domcontentloaded")
-        hold(page, 3200)
+        for card in OPEN_CARDS:
+            page.set_content(card, wait_until="domcontentloaded")
+            hold(page, 3200)
 
-        go_scene(page, f"{BASE}/login", "input[name=username]", "Вход по логину<br>от учителя")
-        hold(page, 900)
-        type_slow(page.locator("input[name=username]"), USER, 110)
-        hold(page, 250)
-        type_slow(page.locator("input[name=password]"), PASSWORD, 80)
-        hold(page, 400)
-        click_scene(page, page.locator("button[type=submit]"), ".lesson-grid", "Личный кабинет:<br>прогресс по всему курсу")
-        hold(page, 2200)
-        slow_scroll_el(page, ".lesson-grid", 1800, "start")
-        hold(page, 2200, "35 занятий<br>открываются по мере прохождения")
+        go_scene(
+            page,
+            f"{BASE}/about",
+            ".about-hero h1",
+            "35 занятий. Понятная программа.<br>Подготовка в своём темпе",
+        )
+        hold(page, 2800)
+        slow_scroll_el(page, "#method", 1800, "start")
+        hold(page, 2600, "Теория, тест и практика —<br>шаг за шагом")
+
+        if cookies:
+            context.add_cookies(cookies)
+        go_scene(
+            page,
+            f"{BASE}/cabinet",
+            ".lesson-grid",
+            "Свой темп.<br>Прогресс виден в кабинете",
+        )
+        hold(page, 2400)
+        slow_scroll_el(page, ".lesson-grid", 1600, "start")
+        hold(page, 2000, "35 занятий по порядку")
 
         tile = page.locator("a.lesson-tile").first
-        slow_scroll_el(page, "a.lesson-tile", 1200, "center")
-        hold(page, 500)
-        click_scene(page, tile, ".path-card", "Каждое занятие —<br>три шага")
-        hold(page, 2200)
-        slow_scroll_el(page, ".path", 1600, "start")
-        hold(page, 2200, "теория · тест · практика")
-
-        click_scene(page, page.locator("a.path-card", has_text="Теория"), ".theory-article", "Теория с прогрессом:<br>дочитал — открылся тест")
-        hold(page, 1600)
-        y1 = page.evaluate("window.scrollY + window.innerHeight * 0.55")
-        slow_scroll(page, y1, 2800)
-        hold(page, 600)
-        y2 = page.evaluate("window.scrollY + window.innerHeight * 0.7")
-        slow_scroll(page, y2, 2600)
-        hold(page, 500)
-        page.evaluate(
-            """async () => {
-              const csrf = document.querySelector('meta[name=csrf-token]')?.content || window.csrfToken;
-              const url = document.querySelector('.theory-progress')?.dataset.progressUrl;
-              if (!url) return;
-              await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json','X-CSRFToken': csrf},
-                body: JSON.stringify({pct:100, completed:true, seconds:12})
-              });
-            }"""
-        )
+        slow_scroll_el(page, "a.lesson-tile", 1000, "center")
         hold(page, 400)
-        go_scene(page, f"{BASE}/lessons/1/test", "form.quiz", "Тест по теории<br>порог — 80%")
-        hold(page, 1500)
+        click_scene(page, tile, ".path-card", "Каждое занятие —<br>три шага")
+        hold(page, 2000)
+        slow_scroll_el(page, ".path", 1200, "start")
+        hold(page, 1800, "Сначала теория")
+
+        click_scene(
+            page,
+            page.locator("a.path-card", has_text="Теория"),
+            ".theory-hero h1",
+            "Теорию можно прочитать<br>или посмотреть",
+        )
+        hold(page, 1800)
+        choose_text = page.locator("#chooseText")
+        if choose_text.count():
+            click_scene(
+                page,
+                choose_text,
+                "#theoryTextCard:not([hidden]) .theory-article",
+                "Текст — небольшими шагами",
+            )
+        hold(page, 800)
+        y1 = page.evaluate("window.scrollY + window.innerHeight * 0.45")
+        slow_scroll(page, y1, 2200)
+        hold(page, 700)
+        mark_theory_done(page)
+        hold(page, 400)
+
+        go_scene(page, f"{BASE}/lessons/1/test", "form.quiz", "Потом короткий тест")
+        hold(page, 1400)
         answers = load_test_answers()
         for letter in answers.get("T1", []):
             click_option(page, "T1", letter)
-            hold(page, 350)
-        slow_scroll_el(page, ".q-card:nth-of-type(2)", 1400, "center")
-        hold(page, 350)
+            hold(page, 280)
+        slow_scroll_el(page, ".q-card:nth-of-type(2)", 1200, "center")
+        hold(page, 250)
         for letter in answers.get("T2", []):
             click_option(page, "T2", letter)
-            hold(page, 280)
+            hold(page, 220)
         fill_remaining_answers(page)
-        hold(page, 400)
-        slow_scroll_el(page, "form.quiz .sticky-actions, form.quiz button[type=submit]", 1600, "end")
-        submit = page.locator("form.quiz button[type=submit]")
-        click_scene(page, submit, ".result-list, .hero-card h1", "Видно, где ошибка.<br>Правильный ответ скрыт")
-        hold(page, 2200)
+        hold(page, 300)
+        slow_scroll_el(page, "form.quiz button[type=submit]", 1400, "center")
+        click_scene(
+            page,
+            page.locator("form.quiz button[type=submit]"),
+            ".result-list, .hero-card h1",
+            "Сразу видно, что повторить",
+        )
+        hold(page, 2400)
 
         practice_btn = page.locator("a.btn-primary", has_text="практической")
         if practice_btn.count() == 0:
             practice_btn = page.locator("a.btn-primary", has_text="практик")
         if practice_btn.count():
-            click_scene(page, practice_btn.first, ".paper", "Практика своего уровня:<br>подстраивается под ученика")
+            click_scene(page, practice_btn.first, ".paper", "Дальше практика в тетради")
         else:
-            go_scene(page, f"{BASE}/lessons/1/practice", ".paper", "Практика своего уровня:<br>подстраивается под ученика")
+            go_scene(page, f"{BASE}/lessons/1/practice", ".paper", "Дальше практика в тетради")
+        hold(page, 1800)
+        slow_scroll_el(page, ".paper", 1400, "start")
+        hold(page, 700)
+        upload = page.locator(".upload-form, .drop")
+        if upload.count():
+            slow_scroll_el(page, ".upload-form, .drop", 1400, "center")
+            hold(page, 400, "Решение можно отправить<br>на проверку")
+            file_input = page.locator("#photoInput")
+            if file_input.count():
+                file_input.set_input_files(str(photo))
+                hold(page, 1600)
+        else:
+            hold(page, 1200, "Решение можно отправить<br>на проверку")
+
+        task_id = seed_check(app, photo)
+        checked = f"{BASE}/lessons/1/practice"
+        if task_id:
+            checked += f"?task={task_id}"
+        go_scene(
+            page,
+            checked,
+            ".ok-card",
+            "Проверка показывает,<br>что уже получается",
+        )
+        hold(page, 1200)
+        if page.locator(".ai-feedback").count():
+            slow_scroll_el(page, ".ai-feedback", 1200, "center")
         hold(page, 2400)
-        slow_scroll_el(page, ".paper", 1600, "start")
-        hold(page, 900)
-        slow_scroll_el(page, ".upload-form, .drop, .tips", 1800, "center")
-        hold(page, 500, "Решил в тетради —<br>сфотографировал — отправил")
-        file_input = page.locator("#photoInput")
-        if file_input.count():
-            file_input.set_input_files(str(photo))
-            hold(page, 1600, "ИИ проверяет фото<br>и пишет, где ошибка")
-            privacy = page.locator("#noPersonalData")
-            if privacy.count():
-                privacy.check()
-            send = page.locator("#sendBtn")
-            if send.count() and send.is_enabled():
-                move_click(page, send)
-                page.wait_for_timeout(800)
-                overlay(page, "ИИ проверяет фото<br>и пишет, где ошибка")
-                page.wait_for_timeout(2800)
-        else:
-            hold(page, 1800, "ИИ проверяет фото<br>и пишет, где ошибка")
+
+        go_scene(
+            page,
+            f"{BASE}/cabinet",
+            ".lesson-grid",
+            "Весь путь остаётся<br>в личном кабинете",
+        )
+        hold(page, 2600)
 
         page.set_content(END_HTML, wait_until="domcontentloaded")
-        hold(page, 3400)
+        hold(page, 3600)
 
         video = page.video
         context.close()
         browser.close()
-        webm = Path(video.path())
-        return webm
+        return Path(video.path())
 
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    photo = OUT_DIR / "solution.jpg"
-    make_solution_photo(photo)
+    photo = WEB_ROOT / "uploads" / "practice" / "2" / "1" / "20260825_095410_1_orig.jpg"
 
     app = create_app()
     reset_reel_user(app)
@@ -544,8 +632,9 @@ def main() -> None:
 
     threading.Thread(target=run, daemon=True).start()
     wait_http(f"{BASE}/login")
+    cookies = login_cookies()
 
-    webm = record_reel(photo)
+    webm = record_reel(photo, cookies, app)
     mp4 = OUT_DIR / "instagram_demo.mp4"
     encode_mp4(webm, mp4)
     print(f"READY {mp4} size={mp4.stat().st_size}")
