@@ -742,6 +742,26 @@ body:has(.sticky-actions) .to-top {
   display: flex;
   flex-direction: column;
 }
+.privacy-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e4c48a;
+  background: #fff8ee;
+  font-weight: 700;
+  line-height: 1.45;
+  cursor: pointer;
+}
+.privacy-check input {
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--teal);
+}
 .upload-submit {
   align-self: center;
   margin-top: 20px;
@@ -1269,6 +1289,14 @@ html:not(.cookie-ok) body { padding-bottom: 92px; }
 html:not(.cookie-ok) .tutor-fab,
 html:not(.cookie-ok) .to-top {
   bottom: calc(96px + env(safe-area-inset-bottom));
+}
+.legal-statement {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e4c48a;
+  background: #fff8ee;
+  font-weight: 700;
 }
 .legal h1 { margin-bottom: 6px; }
 .legal-date { margin: 0 0 18px; }

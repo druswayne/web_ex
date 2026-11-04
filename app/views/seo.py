@@ -44,6 +44,7 @@ def sitemap():
     pages = (
         (f"{base}/", "weekly", "1.0"),
         (f"{base}/register", "monthly", "0.6"),
+        (f"{base}/privacy", "yearly", "0.3"),
         (f"{base}/cookies", "yearly", "0.2"),
     )
     lines = [

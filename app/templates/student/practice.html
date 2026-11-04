@@ -77,7 +77,11 @@
     </div>
     <button class="btn btn-ghost" type="button" id="photoClear">Убрать фото</button>
   </div>
-  <button class="btn btn-primary upload-submit" type="submit" id="sendBtn">Отправить на проверку</button>
+  <label class="privacy-check">
+    <input type="checkbox" name="no_personal_data" id="noPersonalData" value="1" required>
+    <span>Я проверил, что на фотографии решения НЕТ моего имени, фамилии, лица или других личных данных.</span>
+  </label>
+  <button class="btn btn-primary upload-submit" type="submit" id="sendBtn" disabled>Отправить на проверку</button>
   <p class="muted" id="waitHint" hidden>Отправляем фото. Дальше можно сразу открыть другое задание.</p>
 </form>
 {% endif %}

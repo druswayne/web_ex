@@ -607,6 +607,9 @@ def practice_submit(number: int, assignment_id: int):
     if pending_assignment_ids([assignment.id]):
         flash("Это решение ещё проверяется. Можно пока открыть другое задание.", "info")
         return redirect(url_for("student.practice", number=number, task=assignment.id))
+    if request.form.get("no_personal_data") != "1":
+        flash("Перед отправкой подтвердите, что на фотографии нет имени, фамилии, лица и других личных данных.", "warning")
+        return redirect(url_for("student.practice", number=number, task=assignment.id))
     file = request.files.get("photo")
     if not file or not file.filename:
         flash("Прикрепите фотографию решения.", "warning")

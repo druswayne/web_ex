@@ -80,6 +80,7 @@
 
   <footer class="site-foot">
     <nav aria-label="Документы">
+      <a href="{{ url_for('auth.privacy') }}">Политика конфиденциальности</a>
       <a href="{{ url_for('auth.cookies') }}">Соглашение о файлах cookie</a>
     </nav>
     {% if contact_email %}

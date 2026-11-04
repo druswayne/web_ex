@@ -6,6 +6,7 @@
   const btn = document.getElementById("sendBtn");
   const hint = document.getElementById("waitHint");
   const clearBtn = document.getElementById("photoClear");
+  const privacy = document.getElementById("noPersonalData");
   let objectUrl = "";
   let sending = false;
   let generation = 0;
@@ -66,6 +67,17 @@
     if (wrap) wrap.hidden = false;
   };
 
+  const syncSend = () => {
+    if (!btn || !privacy || sending) return;
+    btn.disabled = !privacy.checked;
+  };
+
+  const resetPrivacy = () => {
+    if (!privacy) return;
+    privacy.checked = false;
+    syncSend();
+  };
+
   const clearPhoto = () => {
     generation += 1;
     prepareTask = null;
@@ -78,6 +90,7 @@
     preview.removeAttribute("src");
     preview.hidden = true;
     if (wrap) wrap.hidden = true;
+    resetPrivacy();
   };
 
   if (input && preview) {
@@ -88,6 +101,7 @@
         return;
       }
       const token = ++generation;
+      resetPrivacy();
       showPreview(file);
       prepareTask = toGrayJpeg(file).then((small) => {
         if (token !== generation) return small;
@@ -98,10 +112,18 @@
   }
 
   if (clearBtn) clearBtn.addEventListener("click", clearPhoto);
+  if (privacy) privacy.addEventListener("change", syncSend);
+  syncSend();
 
   if (form && btn) {
     form.addEventListener("submit", async (event) => {
       if (sending) return;
+      if (privacy && !privacy.checked) {
+        event.preventDefault();
+        syncSend();
+        privacy.reportValidity();
+        return;
+      }
       const file = input && input.files && input.files[0];
       if (!file) return;
       event.preventDefault();

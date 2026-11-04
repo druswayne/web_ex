@@ -509,6 +509,9 @@ def record_reel(photo: Path) -> Path:
         if file_input.count():
             file_input.set_input_files(str(photo))
             hold(page, 1600, "ИИ проверяет фото<br>и пишет, где ошибка")
+            privacy = page.locator("#noPersonalData")
+            if privacy.count():
+                privacy.check()
             send = page.locator("#sendBtn")
             if send.count() and send.is_enabled():
                 move_click(page, send)

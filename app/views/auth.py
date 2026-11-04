@@ -100,6 +100,14 @@ def register():
     return render_template("register.html", error=error, form=form)
 
 
+@bp.route("/privacy")
+def privacy():
+    return render_template(
+        "privacy.html",
+        admin_telegram=(current_app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@"),
+    )
+
+
 @bp.route("/cookies")
 def cookies():
     return render_template(
