@@ -38,20 +38,20 @@
     <label>Текущий пароль
       <span class="secret">
         <input type="password" name="current_password" autocomplete="current-password" required>
-        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+        {% include "_secret_toggle.html" %}
       </span>
     </label>
     <label>Новый пароль
       <span class="secret">
         <input type="password" name="new_password" autocomplete="new-password" minlength="8" maxlength="128" required>
-        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+        {% include "_secret_toggle.html" %}
       </span>
     </label>
     <p class="field-hint">Не короче 8 символов. Подойдёт фраза, которую легко запомнить.</p>
     <label>Подтверждение пароля
       <span class="secret">
         <input type="password" name="new_password2" autocomplete="new-password" minlength="8" maxlength="128" required>
-        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+        {% include "_secret_toggle.html" %}
       </span>
     </label>
     <button class="btn btn-primary" type="submit">Сохранить пароль</button>

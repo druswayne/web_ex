@@ -38,6 +38,7 @@
       {% if show_home_nav %}
       <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.index') }}">Главная</a>
       {% endif %}
+      <a class="btn btn-primary btn-sm nav-about" href="{{ url_for('auth.about') }}"{% if request.endpoint == 'auth.about' %} aria-current="page"{% endif %}>О проекте</a>
       {% if current_user.is_authenticated and current_user.is_admin %}
         <a href="{{ url_for('admin.dashboard') }}">Сводка</a>
         <a href="{{ url_for('admin.students') }}">Ученики</a>
@@ -80,6 +81,8 @@
 
   <footer class="site-foot">
     <nav aria-label="Документы">
+      <a href="{{ url_for('auth.about') }}">О проекте</a>
+      <a href="{{ url_for('auth.offer') }}">Публичная оферта</a>
       <a href="{{ url_for('auth.privacy') }}">Политика конфиденциальности</a>
       <a href="{{ url_for('auth.cookies') }}">Соглашение о файлах cookie</a>
     </nav>

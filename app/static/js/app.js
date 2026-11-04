@@ -189,7 +189,6 @@
         if (!input) return;
         const show = input.type === "password";
         input.type = show ? "text" : "password";
-        btn.textContent = show ? "Скрыть" : "Показать";
         btn.setAttribute("aria-pressed", show ? "true" : "false");
         btn.setAttribute("aria-label", show ? "Скрыть пароль" : "Показать пароль");
       });

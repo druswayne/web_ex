@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% set show_home_nav = true %}
+{% set pass_test = config.TEST_PASS_PERCENT|int %}
+{% set pass_practice = config.PRACTICE_PASS_PERCENT|int %}
+{% block full_title %}Математика 9 — онлайн-подготовка к экзамену за 9 класс в Беларуси{% endblock %}
+{% block meta %}
+  {% set seo_title = "Математика 9 — онлайн-подготовка к экзамену за 9 класс в Беларуси" %}
+  {% set seo_description = "«Математика 9» — система самостоятельной подготовки к выпускному экзамену по математике в 9 классе в Беларуси на 2026/2027 учебный год: " ~ lesson_count ~ " занятий по порядку, практика и контроль прогресса." %}
+  {% set seo_keywords = "математика 9 класс, выпускной экзамен, подготовка к экзамену, онлайн курс, Беларусь, 2026" %}
+  {% set seo_url = site_base ~ url_for('auth.about') %}
+  {% set seo_json = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AboutPage",
+        "@id": seo_url ~ "#about",
+        "url": seo_url,
+        "name": seo_title,
+        "description": seo_description,
+        "inLanguage": "ru",
+        "isPartOf": {"@type": "WebSite", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+      },
+      {
+        "@type": "Course",
+        "name": "Математика 9 — подготовка к выпускному экзамену",
+        "description": seo_description,
+        "url": seo_url,
+        "inLanguage": "ru",
+        "educationalLevel": "9 класс",
+        "teaches": "Математика",
+        "timeRequired": "P35W",
+        "provider": {"@type": "Organization", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+      }
+    ]
+  } %}
+  {% include "_public_meta.html" %}
+{% endblock %}
+{% block content %}
+<section class="about-hero is-solo">
+  <div class="about-hero-copy">
+    <p class="eyebrow">О проекте</p>
+    <h1>«Математика 9»</h1>
+    <p>Система самостоятельной подготовки к выпускному экзамену по математике: последовательное обучение, практика и контроль прогресса.</p>
+    <p>Онлайн-курс для девятиклассников Беларуси на 2026/2027 учебный год. {{ lesson_count }} занятий идут по порядку, заниматься можно в своём темпе. Первое занятие открывается сразу после регистрации.</p>
+    <div class="about-hero-actions">
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <a class="btn btn-primary" href="{{ url_for('admin.dashboard') }}">К сводке</a>
+      {% elif current_user.is_authenticated %}
+      <a class="btn btn-primary" href="{{ url_for('student.dashboard') }}">Перейти в кабинет</a>
+      {% else %}
+      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Начать первое занятие</a>
+      <a class="btn btn-ghost" href="#method">Как устроено обучение</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="about-metrics" aria-label="Курс в цифрах">
+  <article class="card">
+    <strong>{{ lesson_count }}</strong>
+    <span>занятий</span>
+    <small>последовательная программа</small>
+  </article>
+  <article class="card">
+    <strong>≈45 мин</strong>
+    <span>на занятие</span>
+    <small>примерное время</small>
+  </article>
+  <article class="card">
+    <strong>{{ pass_test }}%</strong>
+    <span>порог теста</span>
+    <small>чтобы перейти к практике</small>
+  </article>
+  <article class="card">
+    <strong>5</strong>
+    <span>уровней практики</span>
+    <small>от 1–2 до 9–10 баллов</small>
+  </article>
+</section>
+
+<nav class="about-jump" aria-label="Разделы страницы">
+  <a href="#who">Для кого</a>
+  <a href="#method">Методика</a>
+  <a href="#program">Программа</a>
+  <a href="#teacher">Учитель</a>
+  <a href="#principles">Принципы</a>
+</nav>
+
+<section class="about-section" id="who">
+  <h2>Для кого создан курс</h2>
+  <p class="about-lead">Курс для ученика 9 класса, который готовится сам: изучает теорию, проходит тест и решает задания в тетради. Для старта достаточно желания заниматься, тетради и регулярной работы.</p>
+  <div class="about-duo">
+    <article class="card">
+      <h3>Ученику</h3>
+      <ul class="about-list">
+        <li>повторить основные темы и разобрать сложные разделы;</li>
+        <li>заниматься в удобное время и в своём темпе;</li>
+        <li>выбрать посильный уровень заданий;</li>
+        <li>видеть прогресс, а не только число решённых примеров.</li>
+      </ul>
+    </article>
+    <article class="card about-parent">
+      <h3>Родителям</h3>
+      <p>Программа идёт по порядку. Прогресс виден в кабинете, занятия сопровождает учитель. Правила обучения и платные действия объяснены заранее. Курс помогает готовиться и не обещает определённый балл на экзамене.</p>
+    </article>
+  </div>
+</section>
+
+<section class="about-section" id="method">
+  <h2>Как устроено обучение</h2>
+  <p class="about-lead">Каждое следующее занятие опирается на предыдущее. Программа идёт от повторения базы к темам 9 класса и заканчивается тренингом к экзамену. Занятие рассчитано примерно на 45 минут и состоит из трёх этапов. Они открываются по очереди.</p>
+  <div class="about-steps">
+    <article class="about-step">
+      <b>1</b>
+      <h3>Теория</h3>
+      <p>Объяснение темы, формулы и разобранные примеры. Если к занятию есть видео, можно выбрать удобный способ: дочитать текст или досмотреть ролик.</p>
+    </article>
+    <article class="about-step">
+      <b>2</b>
+      <h3>Проверка знаний</h3>
+      <p>Тест примерно из десяти вопросов. Чтобы перейти к практике, нужно не меньше {{ pass_test }}%. Число попыток не ограничено.</p>
+    </article>
+    <article class="about-step">
+      <b>3</b>
+      <h3>Практика</h3>
+      <p>Задания своего уровня ученик решает в тетради и отправляет фото решения на проверку. Следующее занятие открывается, когда практическая часть выполнена не меньше чем на {{ pass_practice }}%.</p>
+    </article>
+  </div>
+  <p class="about-lead" style="margin-top: 14px">Порог теста открывает практику. К следующей теме ведёт уже выполненная практическая часть. Так важные этапы не пропускаются, а к теме, которая пока не даётся, можно вернуться.</p>
+</section>
+
+<section class="about-section" id="path">
+  <h2>Путь одного занятия</h2>
+  <div class="about-steps is-five">
+    <article class="about-step">
+      <b>1</b>
+      <h3>Теория</h3>
+      <p>Читаешь текст или смотришь видео и разбираешь примеры.</p>
+    </article>
+    <article class="about-step">
+      <b>2</b>
+      <h3>Проверка</h3>
+      <p>Проходишь тест и набираешь минимум {{ pass_test }}%.</p>
+    </article>
+    <article class="about-step">
+      <b>3</b>
+      <h3>Практика</h3>
+      <p>Решаешь задания в тетради и отправляешь фотографии.</p>
+    </article>
+    <article class="about-step">
+      <b>4</b>
+      <h3>Обратная связь</h3>
+      <p>Получаешь результат и подсказки, если в решении есть ошибка.</p>
+    </article>
+    <article class="about-step">
+      <b>5</b>
+      <h3>Дальше</h3>
+      <p>Переходишь к следующей теме и продолжаешь подготовку.</p>
+    </article>
+  </div>
+</section>
+
+<section class="about-section" id="program">
+  <h2>Что входит в курс</h2>
+  <p class="about-lead">Это основные блоки программы. Полный список из {{ lesson_count }} занятий ученик видит картой курса в кабинете.</p>
+  <div class="card">
+    <ul class="about-facts">
+      <li><strong>Числа и алгебра</strong><span>вычисления, степени и корни, выражения, уравнения и неравенства</span></li>
+      <li><strong>Геометрия</strong><span>треугольники, четырёхугольники и окружности</span></li>
+      <li><strong>Функции</strong><span>тригонометрия, графики, рациональные дроби</span></li>
+      <li><strong>Задачи</strong><span>текстовые задачи, координаты и решение треугольников</span></li>
+      <li><strong>Прогрессии</strong><span>арифметическая и геометрическая</span></li>
+      <li><strong>К экзамену</strong><span>тренинг и итоговая работа</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="about-section" id="levels">
+  <h2>Свой уровень сложности</h2>
+  <p class="about-lead">При регистрации ученик выбирает один из пяти уровней практических заданий. Так подготовка начинается с подходящей сложности: без перегруза и без слишком простых упражнений. Уровень можно сменить в кабинете. Уже засчитанные задания сохраняются, новые подбираются под выбранный уровень.</p>
+  <div class="about-levels">
+    {% for band in LEVEL_BANDS %}
+    <span>{{ LEVEL_LABELS[band] }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="about-section" id="teacher">
+  <h2>Учитель рядом</h2>
+  <p class="about-lead">Самостоятельная подготовка не значит, что ученик остаётся один. Курс сопровождает учитель — администратор платформы. Он ведёт содержание и ход обучения.</p>
+  <div class="about-grid-2">
+    <article class="card">
+      <h3>Что делает учитель</h3>
+      <ul class="about-list">
+        <li>открывает занятия и следит за прогрессом;</li>
+        <li>обновляет учебные материалы;</li>
+        <li>отвечает на обращения;</li>
+        <li>сопровождает вопросы по курсу и оплате.</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Как устроена обратная связь</h3>
+      <p>На странице теории есть помощник: он объясняет определения, формулы и примеры текущего урока и не подменяет самостоятельное решение.</p>
+      <p>Практическая работа смотрится по условию и рукописи. Если есть ошибка, ученик получает подсказку, чтобы найти её самому. Готовый ответ не выдаётся.</p>
+    </article>
+  </div>
+</section>
+
+<section class="about-section" id="progress">
+  <h2>Прогресс виден</h2>
+  <p class="about-lead">В кабинете собрано, на каком этапе подготовка и что делать дальше.</p>
+  <div class="card">
+    <ul class="about-facts">
+      <li><strong>Занятия</strong><span>сколько пройдено и сколько уже открыто</span></li>
+      <li><strong>Тесты</strong><span>результаты попыток</span></li>
+      <li><strong>Практика</strong><span>сколько заданий засчитано</span></li>
+      <li><strong>Карта курса</strong><span>состояние каждого занятия</span></li>
+      <li><strong>История</strong><span>попытки и полученные подсказки</span></li>
+      <li><strong>Дальше</strong><span>следующее занятие и кнопка «Продолжить»</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="about-section" id="principles">
+  <h2>Наши принципы</h2>
+  <div class="about-principles">
+    <article class="card">
+      <h3>Последовательность</h3>
+      <p>Каждая тема занимает своё место. Это маршрут подготовки, а не случайный набор заданий.</p>
+    </article>
+    <article class="card">
+      <h3>Самостоятельность</h3>
+      <p>Ученик учится рассуждать и записывать собственное решение, а не смотреть готовый ответ.</p>
+    </article>
+    <article class="card">
+      <h3>Понятная обратная связь</h3>
+      <p>Тест и проверка практики показывают, где ошибка, и возвращают к нужному материалу.</p>
+    </article>
+    <article class="card">
+      <h3>Прозрачность</h3>
+      <p>Условия обучения и платные действия объяснены заранее. Тексты, тесты и условия заданий отдельно не тарифицируются.</p>
+    </article>
+    <article class="card">
+      <h3>Ответственность</h3>
+      <p>Курс даёт инструменты для подготовки и не обещает определённый балл. Итог зависит от знаний, регулярности и самостоятельной работы.</p>
+    </article>
+  </div>
+</section>
+
+<section class="about-close">
+  <h2>Готовьтесь к экзамену шаг за шагом</h2>
+  <p>{{ lesson_count }} занятий, понятная последовательность, практика и контроль собственного прогресса собраны в одном месте.</p>
+  <p>Начните с первого занятия и двигайтесь к экзамену в своём темпе.</p>
+  {% if current_user.is_authenticated and current_user.is_admin %}
+  <a class="btn" href="{{ url_for('admin.dashboard') }}">К сводке</a>
+  {% elif current_user.is_authenticated %}
+  <a class="btn" href="{{ url_for('student.dashboard') }}">Перейти в кабинет</a>
+  {% else %}
+  <a class="btn" href="{{ url_for('auth.register') }}">Начать первое занятие</a>
+  {% endif %}
+</section>
+
+<section class="about-section" id="contacts">
+  <h2>Документы и связь</h2>
+  <div class="card">
+    <p>Условия доступа и оплаты — в <a href="{{ url_for('auth.offer') }}">публичной оферте</a>. Как обращаемся с данными — в <a href="{{ url_for('auth.privacy') }}">политике конфиденциальности</a> и <a href="{{ url_for('auth.cookies') }}">соглашении о файлах cookie</a>.</p>
+    <p style="margin-bottom: 0">Вопрос по курсу можно отправить из раздела «Сообщения» после входа. Администратор отвечает в порядке очереди:
+      <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+      {% if admin_telegram %} · <a href="https://t.me/{{ admin_telegram }}" rel="noopener">Telegram @{{ admin_telegram }}</a>{% endif %}
+    </p>
+  </div>
+</section>
+{% endblock %}

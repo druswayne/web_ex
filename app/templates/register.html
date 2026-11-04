@@ -24,6 +24,7 @@
   <div class="auth-side">
     <span class="brand-mark lg" aria-hidden="true"></span>
     <h1>Готовимся к экзамену по математике</h1>
+    <a class="btn auth-about" href="{{ url_for('auth.about') }}">О проекте</a>
     <p>35 занятий: теория, тест и практическая часть. Свой уровень, свой темп, понятный прогресс.</p>
   </div>
   <form method="post" class="auth-form" autocomplete="on">
@@ -38,14 +39,14 @@
     <label>Пароль
       <span class="secret">
         <input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" required>
-        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+        {% include "_secret_toggle.html" %}
       </span>
     </label>
     <p class="field-hint">Не короче 8 символов. Подойдёт фраза, которую легко запомнить.</p>
     <label>Подтверждение пароля
       <span class="secret">
         <input type="password" name="password2" autocomplete="new-password" minlength="8" maxlength="128" required>
-        <button type="button" data-toggle-secret aria-pressed="false">Показать</button>
+        {% include "_secret_toggle.html" %}
       </span>
     </label>
     <label>Эл. почта

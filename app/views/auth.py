@@ -100,20 +100,30 @@ def register():
     return render_template("register.html", error=error, form=form)
 
 
+def _public_contacts() -> dict:
+    return {
+        "admin_telegram": (current_app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@"),
+    }
+
+
+@bp.route("/about")
+def about():
+    return render_template("about.html", **_public_contacts())
+
+
+@bp.route("/offer")
+def offer():
+    return render_template("offer.html", **_public_contacts())
+
+
 @bp.route("/privacy")
 def privacy():
-    return render_template(
-        "privacy.html",
-        admin_telegram=(current_app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@"),
-    )
+    return render_template("privacy.html", **_public_contacts())
 
 
 @bp.route("/cookies")
 def cookies():
-    return render_template(
-        "cookies.html",
-        admin_telegram=(current_app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@"),
-    )
+    return render_template("cookies.html", **_public_contacts())
 
 
 @bp.route("/logout")
