@@ -704,6 +704,8 @@ body:has(.sticky-actions) .to-top {
 .task-dots a.wait { background: #f8efd8; }
 .pill.wait { background: #f8efd8; color: var(--amber); }
 .wait-card { background: #fbf6ea; }
+.wait-card h3 { margin: 0 0 8px; }
+.wait-card p { margin: 0 0 14px; font-weight: 700; line-height: 1.45; }
 .tips {
   border-color: #e4c48a;
   background: #fff8ee;

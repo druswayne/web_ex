@@ -605,7 +605,7 @@ def practice_submit(number: int, assignment_id: int):
         flash("Это задание уже засчитано.", "info")
         return redirect(url_for("student.practice", number=number, task=assignment.id))
     if pending_assignment_ids([assignment.id]):
-        flash("Это решение ещё проверяется. Можно пока открыть другое задание.", "info")
+        flash("Это решение ещё проверяется. Пока можно решать другие задания.", "info")
         return redirect(url_for("student.practice", number=number, task=assignment.id))
     if request.form.get("no_personal_data") != "1":
         flash("Перед отправкой подтвердите, что на фотографии нет имени, фамилии, лица и других личных данных.", "warning")
@@ -678,7 +678,7 @@ def practice_submit(number: int, assignment_id: int):
     )
     db.session.commit()
     start_practice_check(current_app._get_current_object(), attempt.id)
-    flash("Решение отправлено на проверку. Можно перейти к другой задаче — ждать здесь не обязательно.", "info")
+    flash("Решение отправлено. Пока оно проверяется, можно решать другие задачи.", "info")
     return redirect(url_for("student.practice", number=number, task=assignment.id))
 
 
