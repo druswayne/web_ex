@@ -264,7 +264,7 @@
   <h2>Документы и связь</h2>
   <div class="card">
     <p>Условия доступа и оплаты — в <a href="{{ url_for('auth.offer') }}">публичной оферте</a>. Как обращаемся с данными — в <a href="{{ url_for('auth.privacy') }}">политике конфиденциальности</a> и <a href="{{ url_for('auth.cookies') }}">соглашении о файлах cookie</a>.</p>
-    <p style="margin-bottom: 0">Вопрос по курсу можно отправить из раздела «Сообщения» после входа. Администратор отвечает в порядке очереди:
+    <p style="margin-bottom: 0">Вопрос по курсу можно отправить из раздела «Сообщить о проблеме» после входа. Администратор отвечает в порядке очереди:
       <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
       {% if admin_telegram %} · <a href="https://t.me/{{ admin_telegram }}" rel="noopener">Telegram @{{ admin_telegram }}</a>{% endif %}
     </p>
