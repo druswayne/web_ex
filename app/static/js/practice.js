@@ -15,7 +15,7 @@
   const MAX_SIDE = 1600;
   const JPEG_QUALITY = 0.93;
 
-  const toGrayJpeg = async (file) => {
+  const toCheckJpeg = async (file) => {
     if (!file || prepared.has(file)) return file;
     if (!/^image\//.test(file.type) || typeof createImageBitmap !== "function") return file;
     let bitmap;
@@ -32,20 +32,15 @@
       canvas.height = Math.max(1, Math.round(bitmap.height * scale));
       const ctx = canvas.getContext("2d", { alpha: false });
       if (!ctx) return file;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      const frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const px = frame.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const y = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
-        px[i] = px[i + 1] = px[i + 2] = y;
-      }
-      ctx.putImageData(frame, 0, 0);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
       if (!blob) return file;
       const base = (file.name || "solution").replace(/\.[^.]+$/i, "") || "solution";
-      const gray = new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
-      prepared.add(gray);
-      return gray;
+      const photo = new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+      prepared.add(photo);
+      return photo;
     } finally {
       bitmap.close();
     }
@@ -103,7 +98,7 @@
       const token = ++generation;
       resetPrivacy();
       showPreview(file);
-      prepareTask = toGrayJpeg(file).then((small) => {
+      prepareTask = toCheckJpeg(file).then((small) => {
         if (token !== generation) return small;
         usePrepared(small);
         return small;
@@ -131,7 +126,7 @@
       btn.textContent = "Готовим фото…";
       if (hint) hint.hidden = false;
       try {
-        const small = await (prepareTask || toGrayJpeg(file));
+        const small = await (prepareTask || toCheckJpeg(file));
         usePrepared(small);
       } catch (_err) {
         /* уйдёт исходный файл */
