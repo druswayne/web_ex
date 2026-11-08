@@ -146,7 +146,7 @@ class Config:
     AI_OUTPUT_USD_PER_MTOK_LONG = _decimal_env("AI_OUTPUT_USD_PER_MTOK_LONG", "1.80")
     AI_LONG_CONTEXT_TOKENS = _int_env("AI_LONG_CONTEXT_TOKENS", 272_000, 1, 2_000_000)
     # Цена для ученика = себестоимость × 20 (наценка 1900%).
-    # При обычном режиме это около 20 Br с ученика за 4 недели.
+    # При обычном режиме это около 20 BYN с ученика за 4 недели.
     AI_PRICE_MARKUP = Decimal("5")
     # Стартовый баланс нового ученика, белорусские рубли.
     STARTING_BALANCE_BYN = Decimal("2")

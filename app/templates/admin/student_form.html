@@ -25,10 +25,10 @@
         {% endfor %}
       </select>
     </label>
-    <label>Баланс, Br
+    <label>Баланс, BYN
       <input class="balance-field" type="text" name="balance" inputmode="decimal" value="{{ balance_input }}" required>
     </label>
-    <p class="muted">Белорусские рубли. С баланса списывается стоимость запроса и ответа ИИ, увеличенная на 40%.</p>
+    <p class="muted">Баланс ученика в белорусских рублях. С него списывается стоимость запроса и ответа ИИ.</p>
     {% if user %}
     <label class="check">
       <input type="checkbox" name="is_active" value="1" {% if user.is_active %}checked{% endif %}>

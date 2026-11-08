@@ -759,7 +759,7 @@ def install_chat_mock(context) -> None:
                 status=200,
                 content_type="application/json; charset=utf-8",
                 body=json.dumps(
-                    {"ok": True, "messages": state["msgs"], "balance": "5,00 Br"},
+                    {"ok": True, "messages": state["msgs"], "balance": "5,00 BYN"},
                     ensure_ascii=False,
                 ),
             )
@@ -779,7 +779,7 @@ def install_chat_mock(context) -> None:
                 status=200,
                 content_type="application/json; charset=utf-8",
                 body=json.dumps(
-                    {"ok": True, "pending": True, "user": user, "assistant": bot, "balance": "5,00 Br"},
+                    {"ok": True, "pending": True, "user": user, "assistant": bot, "balance": "5,00 BYN"},
                     ensure_ascii=False,
                 ),
             )

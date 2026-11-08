@@ -95,14 +95,13 @@ def parse_byn(raw: str) -> Decimal | None:
     return value.quantize(MONEY, rounding=ROUND_HALF_UP)
 
 
+BALANCE_MARK = "BYN"
+
+
 def format_byn(value: Any) -> str:
-    amount = money(value)
-    coarse = amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    if amount == coarse:
-        text = f"{coarse:.2f}"
-    else:
-        text = f"{amount:.4f}".rstrip("0").rstrip(".")
-    return text.replace(".", ",") + " Br"
+    """Показывает баланс ученику: всегда до сотых, с пометкой BYN."""
+    amount = money(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{amount:.2f}".replace(".", ",") + f" {BALANCE_MARK}"
 
 
 def format_byn_delta(value: Any) -> str:

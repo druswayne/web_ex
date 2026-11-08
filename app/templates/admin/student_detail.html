@@ -22,7 +22,7 @@
   <p class="muted">Сейчас {{ student.balance_byn|byn }}. При каждом запросе к ИИ списывается стоимость запроса и ответа, увеличенная на 40%.</p>
   <form method="post" action="{{ url_for('admin.student_balance', user_id=student.id) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>Новый баланс, Br
+    <label>Новый баланс, BYN
       <input class="balance-field" type="text" name="balance" inputmode="decimal" value="{{ balance_input }}" required>
     </label>
     <button class="btn btn-primary" type="submit">Сохранить баланс</button>
