@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set pass_test = config.TEST_PASS_PERCENT|int %}
+{% set pass_practice = config.PRACTICE_PASS_PERCENT|int %}
+{% block full_title %}Стоимость — Математика 9{% endblock %}
+{% block meta %}
+  {% set seo_title = "Стоимость — Математика 9" %}
+  {% set seo_description = "Доступ к занятиям «Математика 9» без абонентской платы. С баланса оплачиваются вопрос помощнику и проверка фото решения." %}
+  {% set seo_keywords = "стоимость, баланс, проверка решений, математика 9 класс" %}
+  {% set seo_url = site_base ~ url_for('auth.pricing') %}
+  {% set seo_json = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": seo_title,
+    "description": seo_description,
+    "url": seo_url,
+    "inLanguage": "ru",
+    "isPartOf": {"@type": "WebSite", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+  } %}
+  {% include "_public_meta.html" %}
+{% endblock %}
+{% block body_class %}site{% endblock %}
+{% block content %}
+<section class="about-hero is-solo">
+  <div class="about-hero-copy">
+    <p class="eyebrow">Стоимость</p>
+    <h1 class="is-landing">Занятия открыты без абонентской платы</h1>
+    <p>Теория, тесты и тексты заданий не тарифицируются. С баланса оплачиваются проверка фото решения и, по желанию, вопрос помощнику. Без проверки задание не засчитывается и следующее занятие не открывается.</p>
+  </div>
+</section>
+
+<section class="about-section">
+  <h2>Что входит в доступ</h2>
+  <div class="about-grid-2">
+    <article class="card">
+      <h3>Без отдельной оплаты</h3>
+      <ul class="about-list">
+        <li>{{ lesson_count }} занятий: теория, тест и условия практики;</li>
+        <li>личный кабинет и карта прогресса;</li>
+        <li>смена уровня заданий;</li>
+        <li>обращение к администратору из кабинета.</li>
+      </ul>
+    </article>
+    <article class="card">
+      <h3>Списывается с баланса</h3>
+      <ul class="about-list">
+        <li>отправка фото рукописного решения на проверку — без неё задание остаётся невыполненным;</li>
+        <li>вопрос помощнику на странице теории текущего урока — по желанию.</li>
+      </ul>
+      <p>Следующее занятие открывается, когда практика засчитана не меньше чем на {{ pass_practice }}%. Этот порог не набирается, если фото не отправлять. Тест с порогом {{ pass_test }}% проверяется на сайте и отдельно не тарифицируется.</p>
+    </article>
+  </div>
+</section>
+
+<section class="about-section">
+  <h2>Как считается списание</h2>
+  <p class="about-lead">У проверки и у помощника нет одной фиксированной цены. Сумма зависит от объёма запроса: длины вопроса или снимка решения. Перед отправкой система оценивает, хватает ли баланса. Если средств меньше, запрос не уходит и деньги не списываются. Фактическая сумма списывается после ответа.</p>
+  <ul class="about-facts">
+    <li><strong>Старт</strong><span>новому аккаунту начисляется {{ starting_balance }}</span></li>
+    <li><strong>Валюта</strong><span>белорусские рубли, BYN</span></li>
+    <li><strong>Минимум пополнения</strong><span>отдельный минимум не установлен: сумму согласуют с администратором</span></li>
+    <li><strong>Где смотреть остаток</strong><span>в шапке кабинета и в разделе «Данные»</span></li>
+  </ul>
+</section>
+
+<section class="about-section">
+  <h2>Пополнение, история и возврат</h2>
+  <p class="about-lead">Баланс пополняется через администратора: напишите на <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% if admin_telegram %} или в Telegram <a href="https://t.me/{{ admin_telegram }}" rel="noopener">@{{ admin_telegram }}</a>{% endif %}. Зачисление делает администратор после согласования. Баланс — предоплата услуг сайта, не банковский вклад.</p>
+  <p class="about-lead">История списаний и пополнений лежит в кабинете, в разделе «Данные». Неизрасходованный остаток можно попросить вернуть тем же письмом. Уже выполненные проверки и ответы помощника не пересчитываются.</p>
+  <p class="about-lead">Юридические условия — в <a href="{{ url_for('auth.offer') }}">публичной оферте</a>.</p>
+</section>
+
+<section class="about-close">
+  <h2>Сначала можно просто открыть занятия</h2>
+  <p>Регистрация не требует оплаты. Чтобы засчитать практику и открыть следующее занятие, на балансе должны быть средства на проверку фото.</p>
+  <a class="btn" href="{{ url_for('auth.register') }}">Начать подготовку</a>
+</section>
+{% endblock %}

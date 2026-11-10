@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block full_title %}Демонстрационное занятие — Математика 9{% endblock %}
+{% block meta %}
+  {% set seo_title = "Демонстрационное занятие — Математика 9" %}
+  {% set seo_description = "Фрагмент настоящего первого занятия: теория, короткий тест и примеры практических заданий. Без регистрации." %}
+  {% set seo_keywords = "демонстрационный урок, математика 9 класс, теория, тест" %}
+  {% set seo_url = site_base ~ url_for('auth.demo') %}
+  {% set seo_json = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": seo_title,
+    "description": seo_description,
+    "url": seo_url,
+    "inLanguage": "ru",
+    "isPartOf": {"@type": "WebSite", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+  } %}
+  {% include "_public_meta.html" %}
+{% endblock %}
+{% block body_class %}site{% endblock %}
+{% block content %}
+{% if missing %}
+<section class="card">
+  <h1>Демонстрационное занятие пока недоступно</h1>
+  <p>Материалы курса не найдены. Программу можно посмотреть на <a href="{{ url_for('auth.program') }}">отдельной странице</a>.</p>
+</section>
+{% else %}
+<section class="about-hero is-solo">
+  <div class="about-hero-copy">
+    <p class="eyebrow">Демонстрационное занятие · без регистрации</p>
+    <h1 class="is-landing">Занятие {{ lesson.number }}. {{ lesson.title }}</h1>
+    <p>Это фрагмент настоящего первого занятия, а не отдельный рекламный текст. Ниже — первая мини-тема, три вопроса теста и два практических задания уровня «1–2 балла». Полный урок открывается в кабинете.</p>
+  </div>
+</section>
+
+<section class="about-section">
+  <h2>Теория</h2>
+  <p class="about-lead">Ученик читает объяснение, определения и разобранный пример. В кабинете страница длиннее: у занятия несколько мини-тем.</p>
+  <div class="md-body demo-theory">{{ theory_html|safe }}</div>
+</section>
+
+{% if questions %}
+<section class="about-section" id="demo-test">
+  <h2>Короткий тест</h2>
+  <p class="about-lead">В полном занятии тест длиннее, порог перехода к практике — {{ config.TEST_PASS_PERCENT|int }}%. Здесь можно ответить на три вопроса и сразу увидеть, что совпало.</p>
+  {% if result_map %}
+  <p class="demo-score">Совпало {{ correct }} из {{ questions|length }}.</p>
+  {% endif %}
+  <form method="post" class="quiz">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for item in questions %}
+    {% set row = result_map.get(item.q.code) if result_map else none %}
+    <fieldset class="card q-card">
+      <div class="q-head">
+        <span class="q-num">{{ item.q.code }}</span>
+        {% if item.q.topic %}<span class="q-topic">{{ item.q.topic }}</span>{% endif %}
+        {% if item.q.multi %}<span class="pill">несколько верных</span>{% else %}<span class="pill">один верный</span>{% endif %}
+        {% if row %}
+        <span class="pill {% if row.ok %}ok{% else %}bad{% endif %}">{% if row.ok %}верно{% else %}пока не то{% endif %}</span>
+        {% endif %}
+      </div>
+      <div class="q-prompt md-body">{{ item.prompt_html|safe }}</div>
+      <div class="opts">
+        {% for letter, html in item.options %}
+        {% set picked = row and letter in row.picked %}
+        {% set right = row and letter in row.answers %}
+        <label class="opt{% if right %} is-right{% elif picked %} is-miss{% endif %}">
+          {% if item.q.multi %}
+          <input type="checkbox" name="{{ item.q.code }}" value="{{ letter }}" {% if picked %}checked{% endif %}>
+          {% else %}
+          <input type="radio" name="{{ item.q.code }}" value="{{ letter }}" {% if picked %}checked{% endif %}>
+          {% endif %}
+          <span><b>{{ letter }})</b> <span class="md-body">{{ html|safe }}</span></span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+    {% endfor %}
+    <div class="sticky-actions">
+      <button class="btn btn-primary" type="submit">{% if result_map %}Проверить ещё раз{% else %}Проверить ответы{% endif %}</button>
+    </div>
+  </form>
+</section>
+{% endif %}
+
+{% if tasks %}
+<section class="about-section">
+  <h2>Практика</h2>
+  <p class="about-lead">В кабинете ученик решает такие задания в тетради. Ответы здесь не показаны.</p>
+  {% for task in tasks %}
+  <article class="paper">
+    <p class="eyebrow">{{ task.code }}</p>
+    <div class="md-body">{{ task.html|safe }}</div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="about-section">
+  <h2>Как выглядит замечание к решению</h2>
+  <p class="about-lead">Ниже не снимок чужой тетради, а форма замечания. Проверка не называет верный ответ и не переписывает шаг «как надо считать».</p>
+  <article class="card demo-feedback">
+    <p class="eyebrow">Пример формулировки</p>
+    <p>Посмотрите, какое действие в выражении выполняется первым. Знак перед последним числом относится к этому числу, а не ко всему выражению сразу.</p>
+    <p class="muted">Если фото нечёткое, система может написать, что запись не разобрана. Тогда ученик переснимает лист и отправляет его снова. С замечанием можно не согласиться и написать администратору.</p>
+  </article>
+</section>
+
+<section class="about-close">
+  <h2>Полное занятие — в кабинете</h2>
+  <p>После регистрации открывается первое занятие целиком: вся теория, тест и практика выбранного уровня.</p>
+  <a class="btn" href="{{ url_for('auth.register') }}">Начать подготовку</a>
+  <a class="btn btn-ghost" href="{{ url_for('auth.program') }}">Вся программа</a>
+</section>
+{% endif %}
+{% endblock %}

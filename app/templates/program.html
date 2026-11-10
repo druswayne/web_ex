@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block full_title %}Программа курса — Математика 9{% endblock %}
+{% block meta %}
+  {% set seo_title = "Программа курса — Математика 9" %}
+  {% set seo_description = "Все " ~ lesson_count ~ " занятий курса «Математика 9»: разделы, темы и подтемы. Программу можно посмотреть до регистрации." %}
+  {% set seo_keywords = "программа курса, математика 9 класс, темы экзамена, Беларусь" %}
+  {% set seo_url = site_base ~ url_for('auth.program') %}
+  {% set seo_json = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": seo_title,
+    "description": seo_description,
+    "url": seo_url,
+    "inLanguage": "ru",
+    "isPartOf": {"@type": "WebSite", "name": "Математика 9", "url": site_base ~ url_for('auth.index')}
+  } %}
+  {% include "_public_meta.html" %}
+{% endblock %}
+{% block body_class %}site{% endblock %}
+{% block content %}
+<section class="about-hero is-solo">
+  <div class="about-hero-copy">
+    <p class="eyebrow">Программа курса</p>
+    <h1 class="is-landing">{{ lesson_count }} занятий по порядку</h1>
+    <p>Названия и разделы совпадают с курсом в кабинете. Ранние темы опираются на повторение базы, дальше идут основные разделы, ближе к концу — экзаменационный тренинг.</p>
+    <div class="about-hero-actions">
+      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Начать подготовку</a>
+      <a class="btn btn-ghost" href="{{ url_for('auth.demo') }}">Посмотреть занятие</a>
+    </div>
+  </div>
+</section>
+
+<nav class="about-jump" aria-label="Разделы программы">
+  {% for group in groups %}
+  <a href="#section-{{ loop.index }}">{{ group.section }}</a>
+  {% endfor %}
+</nav>
+
+{% for group in groups %}
+<details class="prog" id="section-{{ loop.index }}">
+  <summary>
+    <span>{{ group.section }}</span>
+    <small>Занятия {{ group.lessons[0].number }}–{{ group.lessons[-1].number }} · {{ group.lessons|length }}</small>
+  </summary>
+  <div class="prog-list">
+    {% for lesson in group.lessons %}
+    <article>
+      <b>{{ '%02d'|format(lesson.number) }}</b>
+      <div>
+        <h3>{{ lesson.title }}{% if lesson.role == 'review' %} <em>повторение</em>{% elif lesson.role == 'exam_train' %} <em>экзаменационный тренинг</em>{% endif %}</h3>
+        {% if lesson.subtopics %}
+        <p>{{ lesson.subtopics|join(' · ') }}</p>
+        {% elif lesson.goals %}
+        <p>{% for goal in lesson.goals[:3] %}{{ goal.rstrip(';') }}{% if not loop.last %}. {% endif %}{% endfor %}</p>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</details>
+{% endfor %}
+
+<section class="about-close">
+  <h2>Программа открыта до регистрации</h2>
+  <p>Первое занятие появляется в кабинете сразу после создания аккаунта. Следующие открываются по мере практики.</p>
+  <a class="btn" href="{{ url_for('auth.register') }}">Начать подготовку</a>
+</section>
+{% endblock %}
