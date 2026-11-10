@@ -303,6 +303,7 @@ class LessonContent:
     tests: dict[str, list[TestQuestion]]
     checklist: list[str] = field(default_factory=list)
     subtopics: list[str] = field(default_factory=list)
+    role: str = ""
 
     @property
     def theory_html(self) -> Markup:
@@ -643,6 +644,7 @@ def load_lesson(root: Path, number: int, meta: dict[str, Any] | None = None) -> 
         tests=_parse_tests_by_band(test_md, test_ans),
         checklist=_parse_checklist(md),
         subtopics=list(meta.get("subtopics") or []),
+        role=str(meta.get("role") or ""),
     )
 
 

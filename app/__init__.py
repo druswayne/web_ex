@@ -87,8 +87,10 @@ def create_app() -> Flask:
     def inject_globals():
         from urllib.parse import quote
 
+        from .billing import format_byn
         from .config import LEVEL_BANDS, LEVEL_LABELS
         from .ai_checker import ai_configured
+        from .public_site import LEVEL_BLURBS, LEVEL_FIT
 
         bank = get_bank()
         static_dir = Path(app.static_folder or "")
@@ -127,6 +129,10 @@ def create_app() -> Flask:
             "seo_facebook": app.config.get("FACEBOOK_DOMAIN_VERIFICATION") or "",
             "topup_url": topup_url,
             "contact_email": app.config.get("CONTACT_EMAIL") or "",
+            "admin_telegram": handle,
+            "starting_balance": format_byn(app.config["STARTING_BALANCE_BYN"]),
+            "LEVEL_FIT": LEVEL_FIT,
+            "LEVEL_BLURBS": LEVEL_BLURBS,
             "support_new": support_new,
             "asset_v": asset_v,
         }

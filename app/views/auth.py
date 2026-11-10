@@ -7,6 +7,7 @@ from ..accounts import email_error, normalize_email, password_error, username_er
 from ..config import LEVEL_BANDS, Config
 from ..models import User, db, utcnow
 from ..progress import bootstrap_student, log_activity
+from ..public_site import demo_view, grade_demo, program_groups
 
 bp = Blueprint("auth", __name__)
 
@@ -17,7 +18,7 @@ def index():
         if current_user.is_admin:
             return redirect(url_for("admin.dashboard"))
         return redirect(url_for("student.dashboard"))
-    return render_template("login.html", error=None, is_home=True)
+    return render_template("home.html", groups=program_groups())
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -39,7 +40,7 @@ def login():
                 return redirect(nxt)
             return redirect(url_for("auth.index"))
         error = "Неверный логин или пароль."
-    return render_template("login.html", error=error, is_home=False)
+    return render_template("login.html", error=error)
 
 
 @bp.route("/register", methods=["GET", "POST"])
@@ -76,6 +77,8 @@ def register():
             error = "Такой логин уже занят."
         if error is None and User.email_taken(email):
             error = "Такая почта уже используется."
+        if error is None and request.form.get("accept") != "1":
+            error = "Чтобы создать аккаунт, примите оферту и согласие на обработку данных."
         if error is None:
             user = User(
                 username=username,
@@ -104,6 +107,40 @@ def _public_contacts() -> dict:
     return {
         "admin_telegram": (current_app.config.get("ADMIN_TELEGRAM") or "").strip().lstrip("@"),
     }
+
+
+@bp.route("/program")
+def program():
+    return render_template("program.html", groups=program_groups())
+
+
+@bp.route("/pricing")
+def pricing():
+    return render_template("pricing.html", **_public_contacts())
+
+
+@bp.route("/faq")
+def faq():
+    return render_template("faq.html", **_public_contacts())
+
+
+@bp.route("/demo", methods=["GET", "POST"])
+def demo():
+    view = demo_view()
+    if view is None:
+        return render_template("demo.html", missing=True)
+    result_map = None
+    correct = 0
+    if request.method == "POST":
+        rows, correct = grade_demo(request.form)
+        result_map = {row["code"]: row for row in rows}
+    return render_template(
+        "demo.html",
+        missing=False,
+        result_map=result_map,
+        correct=correct,
+        **view,
+    )
 
 
 @bp.route("/about")

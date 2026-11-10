@@ -43,6 +43,10 @@ def sitemap():
     today = date.today().isoformat()
     pages = (
         (f"{base}/", "weekly", "1.0"),
+        (f"{base}/program", "monthly", "0.9"),
+        (f"{base}/demo", "monthly", "0.7"),
+        (f"{base}/pricing", "monthly", "0.7"),
+        (f"{base}/faq", "monthly", "0.6"),
         (f"{base}/about", "monthly", "0.8"),
         (f"{base}/register", "monthly", "0.6"),
         (f"{base}/offer", "yearly", "0.3"),

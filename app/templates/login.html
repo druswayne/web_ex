@@ -1,58 +1,16 @@
 {% extends "base.html" %}
-{% block full_title %}{% if is_home %}Математика 9 — подготовка к выпускному экзамену{% else %}Вход · {{ course_title }}{% endif %}{% endblock %}
+{% block full_title %}Вход · {{ course_title }}{% endblock %}
 {% block meta %}
-  {% if is_home %}
-    {% set seo_title = "Математика 9 — подготовка к выпускному экзамену" %}
-    {% set seo_description = "Онлайн-курс математики для 9 класса: " ~ lesson_count ~ " занятий с теорией, тестом и практикой. Готовьтесь к выпускному экзамену в своём темпе." %}
-    {% set seo_keywords = "математика 9 класс, выпускной экзамен, подготовка к экзамену, онлайн курс математики, теория, тесты, практика" %}
-    {% set seo_url = site_base ~ url_for('auth.index') %}
-    {% set seo_json = {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "WebSite",
-          "@id": seo_url ~ "#website",
-          "url": seo_url,
-          "name": "Математика 9",
-          "description": seo_description,
-          "inLanguage": "ru"
-        },
-        {
-          "@type": "Course",
-          "@id": seo_url ~ "#course",
-          "name": "Математика 9 — подготовка к выпускному экзамену",
-          "description": seo_description,
-          "url": seo_url,
-          "inLanguage": "ru",
-          "educationalLevel": "9 класс",
-          "teaches": "Математика",
-          "provider": {
-            "@type": "Organization",
-            "name": "Математика 9",
-            "url": seo_url
-          }
-        }
-      ]
-    } %}
-    {% include "_public_meta.html" %}
-  {% else %}
-    <meta name="robots" content="noindex, nofollow">
-  {% endif %}
+  <meta name="robots" content="noindex, nofollow">
 {% endblock %}
-{% block body_class %}auth-body{% endblock %}
+{% block body_class %}site auth-body{% endblock %}
 {% block main_class %}auth-wrap{% endblock %}
 {% block content %}
-<section class="auth-card">
-  <div class="auth-side">
-    <span class="brand-mark lg" aria-hidden="true"></span>
-    <h1>Готовимся к экзамену по математике</h1>
-    <a class="btn auth-about" href="{{ url_for('auth.about') }}">О проекте</a>
-    <p>35 занятий: теория, тест и практическая часть. Свой уровень, свой темп, понятный прогресс.</p>
-  </div>
+<section class="auth-card is-single">
   <form method="post" action="{{ url_for('auth.login') }}" class="auth-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <h2>Вход</h2>
-    <p class="muted">Войдите в свой аккаунт или зарегистрируйтесь.</p>
+    <h1>Вход</h1>
+    <p class="muted">Войдите, чтобы продолжить занятие.</p>
     {% if error %}<div class="flash flash-danger">{{ error }}</div>{% endif %}
     <label>Логин
       <input type="text" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>

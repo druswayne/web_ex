@@ -183,6 +183,43 @@
     foldTheorySolutions();
     renderMath();
     bindToTop();
+    const navToggle = document.querySelector(".nav-toggle");
+    const siteNav = document.getElementById("site-nav");
+    if (navToggle && siteNav) {
+      navToggle.addEventListener("click", () => {
+        const open = document.body.classList.toggle("nav-open");
+        navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      siteNav.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          document.body.classList.remove("nav-open");
+          navToggle.setAttribute("aria-expanded", "false");
+        });
+      });
+    }
+
+    const progWide = window.matchMedia("(min-width: 861px)");
+    const openProgram = () => {
+      if (!progWide.matches) return;
+      document.querySelectorAll("details.prog").forEach((node) => {
+        node.open = true;
+      });
+    };
+    openProgram();
+    progWide.addEventListener("change", openProgram);
+    const hashId = location.hash.replace("#", "");
+    if (hashId) {
+      const target = document.getElementById(hashId);
+      if (target && target.tagName === "DETAILS") target.open = true;
+    }
+    document.querySelectorAll('a[href*="#section-"]').forEach((link) => {
+      link.addEventListener("click", () => {
+        const id = (link.hash || "").replace("#", "");
+        const target = id && document.getElementById(id);
+        if (target && target.tagName === "DETAILS") target.open = true;
+      });
+    });
+
     document.querySelectorAll("[data-toggle-secret]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const input = btn.parentElement && btn.parentElement.querySelector("input");

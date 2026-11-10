@@ -17,20 +17,14 @@
   } %}
   {% include "_public_meta.html" %}
 {% endblock %}
-{% block body_class %}auth-body{% endblock %}
+{% block body_class %}site auth-body{% endblock %}
 {% block main_class %}auth-wrap{% endblock %}
 {% block content %}
-<section class="auth-card">
-  <div class="auth-side">
-    <span class="brand-mark lg" aria-hidden="true"></span>
-    <h1>Готовимся к экзамену по математике</h1>
-    <a class="btn auth-about" href="{{ url_for('auth.about') }}">О проекте</a>
-    <p>35 занятий: теория, тест и практическая часть. Свой уровень, свой темп, понятный прогресс.</p>
-  </div>
+<section class="auth-card is-single">
   <form method="post" class="auth-form" autocomplete="on">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <h2>Регистрация</h2>
-    <p class="muted">После регистрации откроется первое занятие. Уровень заданий потом можно сменить в личном кабинете.</p>
+    <h1>Регистрация</h1>
+    <p class="muted">После отправки откроется кабинет и первое занятие. Оплата для этого не нужна. Уровень потом можно сменить в данных.</p>
     {% if error %}<div class="flash flash-danger">{{ error }}</div>{% endif %}
     <label>Логин
       <input type="text" name="username" value="{{ form.username }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="3" maxlength="32" required autofocus>
@@ -52,14 +46,24 @@
     <label>Эл. почта
       <input type="email" name="email" value="{{ form.email }}" autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="254" required>
     </label>
-    <label>Стартовый уровень заданий
-      <select name="level_band" required>
-        {% for b in LEVEL_BANDS %}
-        <option value="{{ b }}" {% if form.level_band == b %}selected{% endif %}>{{ LEVEL_LABELS[b] }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <p class="field-hint">Это стартовый уровень. В личном кабинете его можно изменить вручную.</p>
+    <fieldset class="level-pick">
+      <legend>Стартовый уровень заданий</legend>
+      {% for b in LEVEL_BANDS %}
+      <label>
+        <input type="radio" name="level_band" value="{{ b }}" {% if form.level_band == b %}checked{% endif %} required>
+        <span>
+          <strong>{{ LEVEL_LABELS[b] }}</strong>
+          <small>{{ LEVEL_FIT[b] }}</small>
+        </span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <p class="field-hint">Уровень — это сложность заданий в курсе. Он не обещает балл на экзамене.</p>
+    <div class="checkline">
+      <input id="accept" type="checkbox" name="accept" value="1" {% if request.method == 'POST' and request.form.get('accept') == '1' %}checked{% endif %} required>
+      <label for="accept">Я принимаю публичную оферту и соглашаюсь на обработку персональных данных.</label>
+    </div>
+    <p class="field-hint">Тексты: <a href="{{ url_for('auth.offer') }}">оферта</a> и <a href="{{ url_for('auth.privacy') }}">политика конфиденциальности</a>. Их лучше прочитать вместе с родителем.</p>
     <button class="btn btn-primary btn-block" type="submit">Создать аккаунт</button>
     <p class="auth-switch">Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войти</a></p>
   </form>
