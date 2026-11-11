@@ -1,0 +1,34 @@
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Segoe UI}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+
+\usetikzlibrary{calc,arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[x=1.0000cm,y=1cm,line cap=round,line join=round]
+\definecolor{linec0}{RGB}{35,35,40}
+\definecolor{linec1}{RGB}{35,35,40}
+\definecolor{linec2}{RGB}{35,35,40}
+\definecolor{linec3}{RGB}{35,35,40}
+\definecolor{linec4}{RGB}{35,35,40}
+\definecolor{linec5}{RGB}{35,35,40}
+\definecolor{edgecol}{RGB}{35,35,40}
+\definecolor{hicol}{RGB}{35,35,40}
+\definecolor{angcol}{RGB}{35,35,40}
+\coordinate (A) at (0.0000,0.0000);
+\coordinate (B) at (6.0000,0.0000);
+\coordinate (C) at (1.5000,4.5000);
+\coordinate (O) at (3.0000,1.5000);
+\draw[edgecol,line width=1.1pt] (A) -- (B);
+\draw[edgecol,line width=1.1pt] (B) -- (C);
+\draw[edgecol,line width=1.1pt] (C) -- (A);
+\draw[edgecol,line width=1.15pt] (O) circle [x radius=3.3541, y radius=3.3541];
+\path (-1.554,-3.054) rectangle (7.554,6.054);
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (0.000,0.000) {A};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (6.000,0.000) {B};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (1.500,4.500) {C};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,1.500) {O};
+\end{tikzpicture}
+\end{document}

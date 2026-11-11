@@ -1,0 +1,43 @@
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Segoe UI}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+
+\usetikzlibrary{calc,arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[x=1.0000cm,y=1cm,line cap=round,line join=round]
+\definecolor{linec0}{RGB}{35,35,40}
+\definecolor{linec1}{RGB}{35,35,40}
+\definecolor{linec2}{RGB}{35,35,40}
+\definecolor{linec3}{RGB}{35,35,40}
+\definecolor{linec4}{RGB}{35,35,40}
+\definecolor{linec5}{RGB}{35,35,40}
+\definecolor{edgecol}{RGB}{35,35,40}
+\definecolor{hicol}{RGB}{35,35,40}
+\definecolor{angcol}{RGB}{35,35,40}
+\coordinate (A) at (0.0000,0.0000);
+\coordinate (B) at (6.0000,0.0000);
+\coordinate (C) at (3.0000,4.0000);
+\coordinate (O) at (3.0000,1.5000);
+\coordinate (X) at (3.0000,0.0000);
+\coordinate (Y) at (1.8000,2.4000);
+\coordinate (Z) at (4.2000,2.4000);
+\draw[edgecol,line width=1.1pt] (A) -- (B);
+\draw[edgecol,line width=1.1pt] (B) -- (C);
+\draw[edgecol,line width=1.1pt] (C) -- (A);
+\draw[edgecol,line width=1.1pt] (O) -- (X);
+\draw[edgecol,line width=1.1pt] (O) -- (Y);
+\draw[edgecol,line width=1.1pt] (O) -- (Z);
+\draw[edgecol,line width=1.15pt] (O) circle [x radius=1.5000, y radius=1.5000];
+\path (0.300,-1.200) rectangle (5.700,4.200);
+\draw[edgecol,line width=0.7pt] (2.780,0.000) -- (2.780,0.220) -- (3.000,0.220);
+\draw[edgecol,line width=0.7pt] (1.668,2.224) -- (1.844,2.092) -- (1.976,2.268);
+\draw[edgecol,line width=0.7pt] (4.332,2.224) -- (4.156,2.092) -- (4.024,2.268);
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (0.000,0.000) {A};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (6.000,0.000) {B};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,4.000) {C};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,1.500) {O};
+\end{tikzpicture}
+\end{document}
