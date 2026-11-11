@@ -10,7 +10,7 @@
   </script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="theme-color" content="#183153">
+  <meta name="theme-color" content="#14362f">
   <title>{% block full_title %}{% block title %}Математика 9{% endblock %} · {{ course_title }}{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
@@ -40,13 +40,13 @@
       <span class="sr-only">Меню</span>
     </button>
     <nav class="topnav site-nav" id="site-nav" aria-label="Разделы сайта">
+      <a href="{{ url_for('auth.index') }}"{% if request.endpoint == 'auth.index' %} aria-current="page"{% endif %}>Главная</a>
       <a href="{{ url_for('auth.program') }}"{% if request.endpoint == 'auth.program' %} aria-current="page"{% endif %}>Программа</a>
       <a href="{{ url_for('auth.index') }}#how">Как проходит обучение</a>
       <a href="{{ url_for('auth.pricing') }}"{% if request.endpoint == 'auth.pricing' %} aria-current="page"{% endif %}>Стоимость</a>
       <a href="{{ url_for('auth.about') }}"{% if request.endpoint == 'auth.about' %} aria-current="page"{% endif %}>О проекте</a>
-      <a href="{{ url_for('auth.faq') }}"{% if request.endpoint == 'auth.faq' %} aria-current="page"{% endif %}>Вопросы</a>
       <a class="nav-login" href="{{ url_for('auth.login') }}"{% if request.endpoint == 'auth.login' %} aria-current="page"{% endif %}>Войти</a>
-      <a class="btn btn-primary" href="{{ url_for('auth.register') }}"{% if request.endpoint == 'auth.register' %} aria-current="page"{% endif %}>Начать подготовку</a>
+      <a class="btn btn-primary" href="{{ url_for('auth.register') }}"{% if request.endpoint == 'auth.register' %} aria-current="page"{% endif %}>Регистрация</a>
     </nav>
     {% else %}
     <nav class="topnav">

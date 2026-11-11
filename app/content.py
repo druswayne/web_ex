@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import json
 import re
 from dataclasses import dataclass, field
@@ -202,6 +203,51 @@ def classify_theory_heading(level: int, title: str) -> str | None:
     return None
 
 
+def _norm_caption(text: str) -> str:
+    text = html.unescape(text or "")
+    text = text.replace("\xa0", " ")
+    text = text.replace("—", "-").replace("–", "-").replace("−", "-")
+    text = re.sub(r"\s+", " ", text).strip().casefold()
+    return re.sub(r"[\s.:;]+$", "", text)
+
+
+_FIG_CAP_BLOCK_RE = re.compile(
+    r"<p>\s*(<img\b[^>]*>)\s*</p>\s*"
+    r"<p>\s*<(strong|em)>([^<]*)</\2>\s*(?:<br\s*/?>)?\s*</p>",
+    re.I,
+)
+_FIG_CAP_INLINE_RE = re.compile(
+    r"<p>\s*(<img\b[^>]*>)\s*(?:<br\s*/?>\s*)+<(strong|em)>([^<]*)</\2>\s*</p>",
+    re.I,
+)
+_IMG_ALT_RE = re.compile(r'\balt="([^"]*)"', re.I)
+
+
+def _figure_with_caption(img: str, caption: str) -> str | None:
+    caption = re.sub(r"\s+", " ", caption).strip()
+    alt_m = _IMG_ALT_RE.search(img)
+    alt = alt_m.group(1) if alt_m else ""
+    if not caption or _norm_caption(caption) != _norm_caption(alt):
+        return None
+    return (
+        '<figure class="tbox tbox-aside t-figure">'
+        f"<figcaption>{caption}</figcaption>"
+        f"{img}"
+        "</figure>"
+    )
+
+
+def _lift_figure_captions(html_text: str) -> str:
+    """Подпись курсивом сразу после рисунка показать над ним, в той же карточке."""
+
+    def repl(m: re.Match[str]) -> str:
+        block = _figure_with_caption(m.group(1), m.group(3))
+        return block if block else m.group(0)
+
+    html_text = _FIG_CAP_BLOCK_RE.sub(repl, html_text)
+    return _FIG_CAP_INLINE_RE.sub(repl, html_text)
+
+
 def _promote_label_headings(html: str) -> str:
     def repl(m: re.Match[str]) -> str:
         label = re.sub(r"\s+", " ", m.group(2)).strip()
@@ -217,6 +263,7 @@ def decorate_theory_html(html: str) -> str:
     if not (html or "").strip():
         return html or ""
     html = THEORY_H2_RE.sub("", html, count=1)
+    html = _lift_figure_captions(html)
     html = _promote_label_headings(html)
     marks = list(HEAD_RE.finditer(html))
     headings: list[dict[str, Any]] = []
