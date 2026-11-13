@@ -34,196 +34,407 @@
   } %}
   {% include "_public_meta.html" %}
 {% endblock %}
+{% block main_class %}board-main{% endblock %}
+{% block extra_js %}<script src="{{ url_for('static', filename='js/home.js', v=asset_v('js/home.js')) }}"></script>{% endblock %}
 {% block content %}
-<section class="hero">
-  <div>
-    <p class="kicker">Онлайн-курс для учеников 9-го класса</p>
-    <h1>Подготовка к экзамену по математике — шаг за шагом</h1>
-    <p class="lead">{{ lesson_count }} последовательных занятий: от повторения основных тем до экзаменационного тренинга. Изучай материал, проверяй себя и решай задачи в удобном темпе.</p>
-    <div class="pub-actions">
-      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Начать подготовку</a>
+{% set go = namespace(
+  url=url_for('auth.register'),
+  label='Начать подготовку',
+  level_url=url_for('auth.register'),
+  level_label='Выбрать уровень при регистрации'
+) %}
+{% if current_user.is_authenticated and current_user.is_admin %}
+  {% set go.url = url_for('admin.dashboard') %}
+  {% set go.label = 'К сводке' %}
+  {% set go.level_url = url_for('admin.dashboard') %}
+  {% set go.level_label = 'К сводке' %}
+{% elif current_user.is_authenticated %}
+  {% set go.url = url_for('student.dashboard') %}
+  {% set go.label = 'В кабинет' %}
+  {% set go.level_url = url_for('student.profile') %}
+  {% set go.level_label = 'Сменить уровень в кабинете' %}
+{% endif %}
+<div id="scrollBar" aria-hidden="true"></div>
+{% set level_short = {
+  "1-2": ("1–2", "балла", "база"),
+  "3-4": ("3–4", "балла", "закрепление"),
+  "5-6": ("5–6", "баллов", "типовые задачи"),
+  "7-8": ("7–8", "баллов", "комбинированные темы"),
+  "9-10": ("9–10", "баллов", "повышенная сложность")
+} %}
+{% set ns = namespace(base=0, main=0, exam=0) %}
+{% for group in groups %}
+  {% for lesson in group.lessons %}
+    {% if lesson.role == 'exam_train' or lesson.number >= 32 %}{% set ns.exam = ns.exam + 1 %}
+    {% elif lesson.number <= 7 %}{% set ns.base = ns.base + 1 %}
+    {% else %}{% set ns.main = ns.main + 1 %}
+    {% endif %}
+  {% endfor %}
+{% endfor %}
+
+<section class="board hero" id="top">
+  <span class="chalk-f" data-speed="0.05" style="top:9%;left:4%;font-size:26px;opacity:.13">a² + b² = c²</span>
+  <span class="chalk-f" data-speed="0.09" style="top:16%;right:6%;font-size:24px;opacity:.12">S = πr²</span>
+  <span class="chalk-f" data-speed="0.07" style="bottom:26%;left:2%;font-size:23px;opacity:.11">sin²α + cos²α = 1</span>
+  <span class="chalk-f" data-speed="0.06" style="bottom:12%;right:3%;font-size:25px;opacity:.12">(a+b)² = a² + 2ab + b²</span>
+  <div class="board-wrap">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="hero-badge rv"><span class="dot"></span>Онлайн-курс для учеников 9-го класса · Беларусь</span>
+        <h1 class="rv" style="--i:1">Подготовка к экзамену по математике — <span class="acc">шаг за шагом<svg viewBox="0 0 200 14" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M3 10 C 45 4, 95 12, 197 6"/></svg></span></h1>
+        <p class="lead rv" style="--i:2">{{ lesson_count }} последовательных занятий: от повторения основных тем до экзаменационного тренинга. Изучай материал, проверяй себя и решай задачи в удобном темпе.</p>
+        <div class="hero-cta rv" style="--i:3">
+          <a class="btn btn-amber" href="{{ go.url }}">{{ go.label }} <svg><use href="#i-arr"/></svg></a>
+          <a class="btn btn-ghost" href="#program">Посмотреть программу</a>
+        </div>
+        <div class="hero-meta rv" style="--i:4">
+          <span class="chip">{{ lesson_count }} занятий</span>
+          <span class="chip">5 уровней сложности</span>
+          <span class="chip">собственный темп</span>
+        </div>
+      </div>
+      {% set pick = namespace(cur=none, nxt=none) %}
+      {% for group in groups %}
+        {% for lesson in group.lessons %}
+          {% if not pick.cur and lesson.number == 12 %}{% set pick.cur = lesson %}{% endif %}
+          {% if pick.cur and not pick.nxt and lesson.number == pick.cur.number + 1 %}{% set pick.nxt = lesson %}{% endif %}
+        {% endfor %}
+      {% endfor %}
+      {% if not pick.cur and groups %}{% set pick.cur = groups[0].lessons[0] %}{% endif %}
+      {% if pick.cur and not pick.nxt %}
+        {% for group in groups %}
+          {% for lesson in group.lessons %}
+            {% if not pick.nxt and lesson.number > pick.cur.number %}{% set pick.nxt = lesson %}{% endif %}
+          {% endfor %}
+        {% endfor %}
+      {% endif %}
+      <div class="cab-zone rv" style="--i:2">
+        <span class="cab-note">так выглядит кабинет ↓</span>
+        <div class="cab" id="cab" data-done="{{ pick.cur.number - 1 if pick.cur else 0 }}" aria-label="Занятие {{ pick.cur.number if pick.cur else '' }} в кабинете ученика">
+          <div class="cab-top"><span class="cab-title">Кабинет · прогресс</span><span class="cab-level">{{ LEVEL_LABELS['5-6'] }}</span></div>
+          <div class="cab-progress"><div class="cab-bar"><i id="cabFill"></i></div><span class="cab-count"><b id="cabNum">0</b>/{{ lesson_count }}</span></div>
+          {% if pick.cur %}
+          <div class="cab-lesson">
+            <div class="cab-lesson-head">
+              <span class="cab-num">{{ '%02d'|format(pick.cur.number) }}</span>
+              <div>
+                <b>{{ pick.cur.title }}</b>
+                <small>{{ pick.cur.section }}</small>
+              </div>
+              <span class="cab-open">открыто</span>
+            </div>
+            <ul class="cab-steps">
+              <li class="cs s1"><span class="cs-ic"><svg><use href="#i-check"/></svg></span>Теория<em>изучена</em></li>
+              <li class="cs s2"><span class="cs-ic"><svg><use href="#i-check"/></svg></span>Тест по теории<em>{{ pass_test }}%</em></li>
+              <li class="cs s3"><span class="cs-ic"><svg><use href="#i-dot"/></svg></span>Практическая часть<em>фото на проверке</em></li>
+            </ul>
+          </div>
+          {% if pick.nxt %}
+          <div class="cab-next"><svg><use href="#i-lock"/></svg><div><b>{{ pick.nxt.number }} · {{ pick.nxt.title }}</b><small>откроется после зачёта практики</small></div></div>
+          {% endif %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat rv"><b><span class="cnt" data-count="{{ lesson_count }}">0</span></b><span>занятий по порядку — от базы до тренинга</span></div>
+      <div class="stat rv" style="--i:1"><b><span class="cnt" data-count="5">0</span></b><span>уровней сложности заданий</span></div>
+      <div class="stat rv" style="--i:2"><b><span class="pre">≈</span><span class="cnt" data-count="45">0</span></b><span>минут — ориентир на одно занятие</span></div>
+      <div class="stat rv" style="--i:3"><b><span class="cnt" data-count="{{ pass_test }}">0</span><span class="suf">%</span></b><span>порог теста и зачёта практики</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="paper sec" id="why">
+  <div class="board-wrap">
+    <div class="manifesto-grid">
+      <div class="sec-head rv" style="margin-bottom:0">
+        <div class="eyb">01 · порядок</div>
+        <h2>Не оставляй всю подготовку на последние недели</h2>
+        <p class="lead">Когда экзамен уже близко, приходится торопиться: повторять правила, вспоминать формулы и одновременно учиться решать задачи. Спокойнее разобрать темы заранее — по одной, с практикой и проверкой.</p>
+        <p class="lead" style="margin-top:12px">Курс держит этот порядок. Ученик занимается сам. В кабинете видно, что уже сделано и что открыто дальше.</p>
+      </div>
+      <div class="manifesto-note rv" style="--i:2">спокойно, по одной теме за раз</div>
+    </div>
+    <div class="stepper rv" id="stepper">
+      <div class="step"><i>1</i><b>Изучи тему</b><small>материал и примеры</small></div>
+      <div class="step"><i>2</i><b>Проверь понимание</b><small>тест от {{ pass_test }}%</small></div>
+      <div class="step"><i>3</i><b>Реши задачи</b><small>фото на проверку</small></div>
+      <div class="step"><i>4</i><b>Двигайся дальше</b><small>следующее занятие</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="paper tint sec" id="how">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">02 · занятие</div>
+      <h2>Как проходит занятие</h2>
+      <p class="lead">Три шага открываются по очереди. Тему нельзя перескочить.</p>
+    </div>
+    <div class="anatomy" data-stagger>
+      <article class="acard rv">
+        <div class="acard-top"><span class="acard-badge">Шаг 1 · Изучи</span><span class="acard-ic"><svg><use href="#i-book"/></svg></span></div>
+        <h3>Материал</h3>
+        <p>Объяснение, формулы и примеры. Если у занятия есть видео, можно читать или смотреть.</p>
+        <div class="acard-foot"><span class="chip"><svg><use href="#i-book"/></svg>текст</span><span class="chip"><svg><use href="#i-play"/></svg>видео, если есть</span></div>
+      </article>
+      <article class="acard rv">
+        <div class="acard-top"><span class="acard-badge">Шаг 2 · Проверь</span><span class="acard-ic"><svg><use href="#i-check"/></svg></span></div>
+        <h3>Тест</h3>
+        <p>Чтобы перейти к практике, нужно не меньше {{ pass_test }}%. Число попыток не ограничено.</p>
+        <div class="acard-foot">
+          <svg class="ring" viewBox="0 0 72 72" aria-hidden="true"><circle class="bg" cx="36" cy="36" r="30"/><circle class="fg" cx="36" cy="36" r="30" pathLength="100"/><text x="36" y="41" text-anchor="middle">{{ pass_test }}%</text></svg>
+          <small>порог перехода к практике · попытки не ограничены · проверяется на сайте бесплатно</small>
+        </div>
+      </article>
+      <article class="acard rv">
+        <div class="acard-top"><span class="acard-badge">Шаг 3 · Реши</span><span class="acard-ic"><svg><use href="#i-cam"/></svg></span></div>
+        <h3>Практика</h3>
+        <p>Решение пишут в тетради и отправляют фото на проверку. Без неё задание не засчитано, и следующее занятие не откроется.</p>
+        <div class="acard-foot">
+          <span class="lockwrap"><svg class="l-closed"><use href="#i-lock"/></svg><svg class="l-open"><use href="#i-unlock"/></svg></span>
+          <small>зачёт практики открывает следующее занятие</small>
+        </div>
+      </article>
+    </div>
+    <p class="anatomy-note rv"><a class="link-arr" href="{{ url_for('auth.demo') }}">Посмотреть фрагмент первого занятия — без регистрации <svg><use href="#i-arr"/></svg></a></p>
+  </div>
+</section>
+
+<section class="paper sec" id="includes">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">03 · состав курса</div>
+      <h2>Что входит в курс</h2>
+    </div>
+    <div class="features" data-stagger>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-list"/></svg></span><h3>{{ lesson_count }} занятий по порядку</h3><p>От повторения базы к темам 9 класса и экзаменационному тренингу.</p></article>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-clock"/></svg></span><h3>Около 45 минут</h3><p>Ориентир на одно занятие. Время зависит от темпа и повторных попыток.</p></article>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-layers"/></svg></span><h3>Пять уровней</h3><p>Практика начинается с посильных заданий. Уровень не равен баллу на экзамене.</p></article>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-gauge"/></svg></span><h3>Свой темп</h3><p>Обязательного расписания нет. Доступ действует, пока аккаунт не удалён.</p></article>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-chart"/></svg></span><h3>Прогресс в кабинете</h3><p>Пройденные занятия, тесты, практика и следующее открытое занятие.</p></article>
+      <article class="fcard rv"><span class="fic"><svg><use href="#i-book"/></svg></span><h3>Теория, тесты и задания</h3><p>Тексты входят в доступ. Чтобы засчитать практику, фото решения отправляют на проверку — она списывается с баланса.</p></article>
+    </div>
+  </div>
+</section>
+
+<section class="board sec" id="program">
+  <span class="chalk-f" data-speed="0.06" style="top:6%;right:4%;font-size:30px;opacity:.1">π ≈ 3,14159…</span>
+  <div class="board-wrap">
+    <div class="prog-head rv">
+      <div class="sec-head" style="margin-bottom:0">
+        <div class="eyb">04 · программа</div>
+        <h2>{{ lesson_count }} занятий по порядку</h2>
+        <p class="lead">Все {{ lesson_count }} занятий можно посмотреть до регистрации. Ниже — весь маршрут: от повторения базы до экзаменационного тренинга.</p>
+      </div>
+      <a class="btn btn-ghost" href="{{ url_for('auth.program') }}">Страница программы <svg><use href="#i-arr"/></svg></a>
+    </div>
+    <div class="fchips rv" role="group" aria-label="Фильтр этапов программы">
+      <button class="fchip active" type="button" data-f="all">Все <small>· {{ lesson_count }}</small></button>
+      <button class="fchip" type="button" data-f="base">База <small>· {{ ns.base }}</small></button>
+      <button class="fchip" type="button" data-f="main">Основные разделы <small>· {{ ns.main }}</small></button>
+      <button class="fchip" type="button" data-f="exam">Экзаменационный тренинг <small>· {{ ns.exam }}</small></button>
+    </div>
+    <div class="prog-zone rv">
+      <div class="route-list" id="routeList" data-total="{{ lesson_count }}">
+        {% for group in groups %}
+          {% for lesson in group.lessons %}
+          {% set stage = 'exam' if lesson.role == 'exam_train' or lesson.number >= 32 else ('base' if lesson.number <= 7 else 'main') %}
+          {% set section = lesson.section or '' %}
+          {% set fam = 'exam' if 'Экзамен' in section else ('coral' if 'Тригон' in section else ('violet' if 'Функц' in section else ('green' if 'Плани' in section or 'Площад' in section else ('amber' if 'Уравнен' in section or 'Неравен' in section or 'Систем' in section or 'Текст' in section else ('chalk' if 'Повтор' in section else 'sky'))))) %}
+          <div class="prow fam-{{ fam }}{% if lesson.role == 'review' %} checkpoint{% endif %}" data-stage="{{ stage }}" data-n="{{ lesson.number }}">
+            <span class="pnode">{{ '%02d'|format(lesson.number) }}</span>
+            <div class="pbody">
+              <div class="ptop">
+                <h4>{{ lesson.title }}</h4>
+                <span class="ptag">{{ lesson.section }}</span>
+                {% if lesson.role == 'review' %}<span class="pcheck">повторение</span>{% endif %}
+              </div>
+              {% if lesson.subtopics %}<p class="ptopics">{{ lesson.subtopics|join(' · ') }}</p>{% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% endfor %}
+      </div>
+      <div class="prog-fade off" id="progFade"></div>
+    </div>
+    <div class="prog-ctl">
+      <button class="btn btn-amber" type="button" id="progMore" aria-expanded="false">Показать все {{ lesson_count }} занятий <svg><use href="#i-chev"/></svg></button>
+      <span id="progShown"></span>
+    </div>
+    <div class="pace rv">
+      <div>
+        <h3>Прикинь свой темп</h3>
+        <p class="hint">Это арифметика, а не расписание: обязательного графика нет, доступ действует, пока аккаунт не удалён.</p>
+        <div class="pace-slider">
+          <input type="range" id="pace" min="1" max="7" value="3" step="1" aria-label="Занятий в неделю">
+          <b id="paceN">3 занятия в неделю</b>
+        </div>
+      </div>
+      <div class="pace-out">
+        <b id="paceWeeks">≈ 12</b><span id="paceWeeksLbl">недель на весь курс</span>
+        <div class="pace-dots" id="paceDots" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="prog-foot rv">
+      <p>Первое занятие появляется в кабинете сразу после создания аккаунта. Следующие открываются по мере практики — когда засчитано не меньше {{ pass_practice }}%.</p>
+      <a class="btn btn-amber" href="{{ go.url }}">{% if current_user.is_authenticated %}{{ go.label }}{% else %}Начать с первого занятия{% endif %} <svg><use href="#i-arr"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<section class="paper sec" id="levels">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">05 · уровни</div>
+      <h2>Пять уровней сложности</h2>
+      <p class="lead">Уровень — это группа заданий, а не обещанная оценка. Его выбирают при регистрации и меняют в кабинете в любой момент.</p>
+    </div>
+    <div class="lv-selector rv" role="group" aria-label="Выбор уровня для просмотра">
+      {% for band in LEVEL_BANDS %}
+      <button class="lvbtn{% if loop.first %} active{% endif %}" type="button" data-i="{{ loop.index0 }}" data-title="{{ LEVEL_LABELS[band] }}" data-desc="{{ LEVEL_FIT[band] }}" data-tag="{{ level_short[band][2] }}" aria-pressed="{{ 'true' if loop.first else 'false' }}"><b>{{ level_short[band][0] }}</b><span>{{ level_short[band][1] }}</span></button>
+      {% endfor %}
+    </div>
+    <div class="lv-panel rv" id="lvPanel" data-l="0">
+      <div class="lv-info">
+        <h3>Уровень <span id="lvTitle">{{ LEVEL_LABELS[LEVEL_BANDS[0]] }}</span></h3>
+        <p id="lvDesc">{{ LEVEL_FIT[LEVEL_BANDS[0]] }}</p>
+        <span class="lv-tag" id="lvTag">{{ level_short[LEVEL_BANDS[0]][2] }}</span>
+      </div>
+      <div class="lv-meter" id="lvMeter" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="lv-note rv">
+      <p>Не знаешь, с чего начать — выбери более простой уровень. Позже его можно поднять. <b>Уровень описывает сложность заданий курса и не обещает балл на экзамене.</b></p>
+      <a class="btn btn-ink" href="{{ go.level_url }}">{{ go.level_label }} <svg><use href="#i-arr"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<section class="paper tint sec" id="check">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">06 · практика</div>
+      <h2>Практика и обратная связь</h2>
+    </div>
+    <div class="practice-grid">
+      <div class="practice-copy rv">
+        <p>Задачи решают в тетради и отправляют фото на проверку. Задание засчитывается только после неё. Пока не набрано {{ pass_practice }}% практики, следующее занятие не открывается. Проверка не подсказывает готовый ответ.</p>
+        <p>Автоматическая проверка может ошибиться, особенно если запись неразборчива, кадр обрезан или слиплись дроби, степени и корни. Тогда лист лучше переснять и отправить снова. С замечанием можно не согласиться и написать администратору.</p>
+        <p>Проверка фото списывается с баланса: без неё практика не двигается. Вопрос помощнику по теории задают по желанию, он тоже списывается с баланса. Тест проверяется на сайте и отдельно не тарифицируется.</p>
+        <div class="pr-chips">
+          <span class="chip"><svg><use href="#i-cam"/></svg>кадр обрезан — пересними</span>
+          <span class="chip"><svg><use href="#i-mail"/></svg>не согласен — напиши администратору</span>
+          <span class="chip"><svg><use href="#i-check"/></svg>готовый ответ не подсказываем</span>
+        </div>
+      </div>
+      <div class="mock-zone rv" style="--i:1">
+        <div class="mock" id="mock">
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div class="mock-head"><svg><use href="#i-cam"/></svg><span>Фото решения · занятие 6</span><span id="mockStatus">ожидает</span></div>
+          <div class="mock-hand">
+            x² − 5x + 6 = 0<br>
+            D = 25 − 24 = 1<br>
+            x₁ = (5 + 1) / 2 = 3<br>
+            x₂ = (5 − 1) / 2 = 2<br>
+            <span class="ans">Ответ: 2; 3</span>
+          </div>
+          <div class="scanline"></div>
+          <div class="stamp">Зачтено ✓</div>
+        </div>
+        <div class="mock-ctl">
+          <span class="chip"><svg><use href="#i-lock"/></svg>на фото — без имени, фамилии и лица</span>
+          <button class="replay" type="button" id="scanBtn"><svg><use href="#i-reset"/></svg>Показать проверку ещё раз</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="paper sec" id="teacher">
+  <div class="board-wrap">
+    <div class="support rv">
+      <div class="support-who">
+        <span class="avatar">А</span>
+        <div>
+          <div class="eyb" style="margin-bottom:8px">07 · поддержка</div>
+          <h3>Кто ведёт курс</h3>
+          <p>Содержание, открытие занятий и ответы на обращения держит администратор платформы. Это не формат постоянных индивидуальных уроков.</p>
+          <p>Написать можно из кабинета, через «Сообщить о проблеме», или на почту{% if admin_telegram %} и в Telegram{% endif %}. Срок ответа заранее не зафиксирован: обращения читаются по очереди.</p>
+        </div>
+      </div>
+      <div class="support-cta">
+        <a class="btn btn-line" href="mailto:{{ contact_email }}"><svg><use href="#i-mail"/></svg>{{ contact_email }}</a>
+        {% if admin_telegram %}<a class="btn btn-line" href="https://t.me/{{ admin_telegram }}" target="_blank" rel="noopener"><svg><use href="#i-tg"/></svg>Telegram · @{{ admin_telegram }}</a>{% endif %}
+        <small>пополнение баланса и возврат — тоже через администратора</small>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="paper sec" id="pricing">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">08 · стоимость</div>
+      <h2>Занятия — без абонентской платы</h2>
+      <p class="lead">Отдельной платы за занятия нет. После регистрации открываются теория, тесты, тексты заданий и кабинет.</p>
+    </div>
+    <div class="price-grid" data-stagger>
+      <div class="price-free rv">
+        <div class="tagline">входит в доступ</div>
+        <b class="big">0 BYN</b>
+        <div class="sub">за теорию, тесты и тексты заданий</div>
+        <ul>
+          <li><svg><use href="#i-check"/></svg>{{ lesson_count }} занятий: теория, тест и условия практики</li>
+          <li><svg><use href="#i-check"/></svg>личный кабинет и карта прогресса</li>
+          <li><svg><use href="#i-check"/></svg>смена уровня заданий в любой момент</li>
+          <li><svg><use href="#i-check"/></svg>обращение к администратору из кабинета</li>
+        </ul>
+      </div>
+      <div class="price-mech">
+        <div class="mech rv"><span class="mech-ic"><svg><use href="#i-wallet"/></svg></span><div><b>С баланса</b><p>Проверка фото — она нужна для зачёта практики. Вопрос помощнику по теории — по желанию. Тест проверяется на сайте и не тарифицируется.</p></div></div>
+        <div class="mech rv"><span class="mech-ic"><svg><use href="#i-gift"/></svg></span><div><b>На старте — <span class="byn">{{ starting_balance }}</span></b><p>Уже на новом аккаунте после регистрации. Пополнение — через администратора, остаток можно попросить вернуть.</p></div></div>
+        <div class="mech rv"><span class="mech-ic"><svg><use href="#i-scale"/></svg></span><div><b>Цена зависит от объёма запроса</b><p>Если средств не хватает, запрос не уходит и деньги не списываются. Фактическая сумма списывается после ответа.</p></div></div>
+        <p class="price-link rv"><a class="link-arr" href="{{ url_for('auth.pricing') }}">Баланс, пополнение и возврат <svg><use href="#i-arr"/></svg></a></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="paper tint sec" id="faq">
+  <div class="board-wrap">
+    <div class="sec-head rv">
+      <div class="eyb">09 · вопросы</div>
+      <h2>Частые вопросы</h2>
+    </div>
+    <div class="faq rv">
+      <details open><summary>Для кого курс?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">Для ученика 9 класса, который готовится к выпускному экзамену по математике сам. Родителю видна программа и то, что входит в доступ.</div></details>
+      <details><summary>Сколько занятий в программе?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">{{ lesson_count }}. Они идут по порядку: повторение, темы 9 класса, экзаменационный тренинг. Список открыт до регистрации.</div></details>
+      <details><summary>Сколько длится занятие?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">Около 45 минут. Реальное время зависит от темпа чтения, попыток теста и числа задач.</div></details>
+      <details><summary>Можно ли заниматься в своём темпе?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">Да. Обязательного расписания нет. Доступ действует, пока аккаунт не удалён. Следующее занятие открывается после практики текущего не меньше чем на {{ pass_practice }}%.</div></details>
+      <details><summary>Как выбрать уровень?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">По тому, какие задачи сейчас получаются. Уровень описывает сложность заданий курса и не обещает балл на экзамене. Его можно сменить в кабинете.</div></details>
+      <details><summary>Обязательно ли отправлять решение на проверку?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">Да. Пока фото не проверено и задание не засчитано, практика считается невыполненной и следующее занятие не открывается. Проверка списывается с баланса. Вопрос помощнику по теории можно не задавать.</div></details>
+      <details><summary>Гарантирует ли курс определённую оценку?<svg class="chev"><use href="#i-chev"/></svg></summary><div class="faq-a">Нет. Курс помогает готовиться по порядку. Итог зависит от знаний, регулярности и самостоятельной работы.</div></details>
+    </div>
+    <p class="faq-more rv"><a class="link-arr" href="{{ url_for('auth.faq') }}">Все вопросы <svg><use href="#i-arr"/></svg></a></p>
+  </div>
+</section>
+
+<section class="board final" id="start">
+  <span class="chalk-f" data-speed="0.07" style="top:14%;left:7%;font-size:26px;opacity:.12">√81 = 9</span>
+  <span class="chalk-f" data-speed="0.1" style="bottom:16%;right:6%;font-size:24px;opacity:.11">S = ½ a·h</span>
+  <div class="board-wrap rv">
+    <span class="hand-arrow">начни с первого занятия</span>
+    <h2>Начни подготовку заранее</h2>
+    <p class="lead">Пройди программу последовательно, уделяй внимание каждой теме и следи за своим продвижением.</p>
+    <div class="final-cta">
+      <a class="btn btn-amber" href="{{ go.url }}">{{ go.label }} <svg><use href="#i-arr"/></svg></a>
       <a class="btn btn-ghost" href="{{ url_for('auth.program') }}">Посмотреть программу</a>
     </div>
-    <p class="hero-meta">{{ lesson_count }} занятий · 5 уровней сложности · собственный темп</p>
-  </div>
-  <aside class="route" aria-label="Маршрут одного занятия">
-    <svg class="route-mark" viewBox="0 0 160 72" aria-hidden="true">
-      <path d="M8 62 H152" />
-      <path d="M16 68 V8" />
-      <path d="M16 58 C 42 58, 48 22, 78 22 S 112 40, 148 12" />
-    </svg>
-    <p class="route-label">Одно занятие</p>
-    <ol>
-      <li><b>Изучи</b><span>теория и разобранные примеры</span></li>
-      <li><b>Проверь</b><span>тест, порог {{ pass_test }}%</span></li>
-      <li><b>Реши</b><span>фото решения на проверку</span></li>
-      <li><b>Дальше</b><span>следующая тема после практики</span></li>
-    </ol>
-    <a href="{{ url_for('auth.demo') }}">Открыть фрагмент занятия</a>
-  </aside>
-</section>
-
-<section class="band split-2" id="why">
-  <div>
-    <h2>Не оставляй всю подготовку на последние недели</h2>
-    <p class="lead">Когда экзамен уже близко, приходится торопиться: повторять правила, вспоминать формулы и одновременно учиться решать задачи. Спокойнее разобрать темы заранее — по одной, с практикой и проверкой.</p>
-    <p class="lead">Курс держит этот порядок. Ученик занимается сам. В кабинете видно, что уже сделано и что открыто дальше.</p>
-  </div>
-  <ol class="flow" aria-label="Порядок работы">
-    <li><b>1</b><span>Изучи тему</span></li>
-    <li><b>2</b><span>Проверь понимание</span></li>
-    <li><b>3</b><span>Реши задачи</span></li>
-    <li><b>4</b><span>Двигайся дальше</span></li>
-  </ol>
-</section>
-
-<section class="band" id="how">
-  <h2>Как проходит занятие</h2>
-  <p class="lead">Три шага открываются по очереди. Тему нельзя перескочить.</p>
-  <div class="steps">
-    <article>
-      <b>Изучи</b>
-      <h3>Материал</h3>
-      <p>Объяснение, формулы и примеры. Если у занятия есть видео, можно читать или смотреть.</p>
-    </article>
-    <article>
-      <b>Проверь</b>
-      <h3>Тест</h3>
-      <p>Чтобы перейти к практике, нужно не меньше {{ pass_test }}%. Число попыток не ограничено.</p>
-    </article>
-    <article>
-      <b>Реши</b>
-      <h3>Практика</h3>
-      <p>Решение пишут в тетради и отправляют фото на проверку. Без неё задание не засчитано, и следующее занятие не откроется.</p>
-    </article>
-  </div>
-  <p class="band-more"><a href="{{ url_for('auth.demo') }}">Посмотреть фрагмент первого занятия</a> — без регистрации.</p>
-</section>
-
-<section class="band" id="includes">
-  <h2>Что входит в курс</h2>
-  <div class="facts">
-    <article>
-      <h3>{{ lesson_count }} занятий по порядку</h3>
-      <p>От повторения базы к темам 9 класса и экзаменационному тренингу.</p>
-    </article>
-    <article>
-      <h3>Около 45 минут</h3>
-      <p>Ориентир на одно занятие. Время зависит от темпа и повторных попыток.</p>
-    </article>
-    <article>
-      <h3>Пять уровней</h3>
-      <p>Практика начинается с посильных заданий. Уровень не равен баллу на экзамене.</p>
-    </article>
-    <article>
-      <h3>Свой темп</h3>
-      <p>Обязательного расписания нет. Доступ действует, пока аккаунт не удалён.</p>
-    </article>
-    <article>
-      <h3>Прогресс в кабинете</h3>
-      <p>Пройденные занятия, тесты, практика и следующее открытое занятие.</p>
-    </article>
-    <article>
-      <h3>Теория, тесты и задания</h3>
-      <p>Тексты входят в доступ. Чтобы засчитать практику, фото решения отправляют на проверку — она списывается с баланса.</p>
-    </article>
+    {% if not current_user.is_authenticated %}
+    <p class="final-login">Уже есть аккаунт? <a href="{{ url_for('auth.login') }}">Войти</a></p>
+    {% endif %}
   </div>
 </section>
-
-<section class="band" id="program">
-  <h2>Программа</h2>
-  <p class="lead">Все {{ lesson_count }} занятий можно посмотреть до регистрации. Ниже — разделы в том порядке, в каком они идут в курсе.</p>
-  <div class="pills">
-    {% for group in groups %}
-    <a href="{{ url_for('auth.program') }}#section-{{ loop.index }}">
-      {{ group.section }}
-      <span>{{ group.lessons|length }}</span>
-    </a>
-    {% endfor %}
-  </div>
-  <p class="band-more"><a class="btn btn-ghost" href="{{ url_for('auth.program') }}">Посмотреть все {{ lesson_count }} занятий</a></p>
-</section>
-
-<section class="band" id="levels">
-  <h2>Пять уровней сложности</h2>
-  <p class="lead">Уровень — это группа заданий, а не обещанная оценка. Его выбирают при регистрации и меняют в кабинете в любой момент.</p>
-  <div class="levels">
-    {% for band in LEVEL_BANDS %}
-    <article>
-      <h3>{{ LEVEL_LABELS[band] }}</h3>
-      <p>{{ LEVEL_FIT[band] }}</p>
-    </article>
-    {% endfor %}
-  </div>
-  <p class="band-more">Не знаешь, с чего начать — выбери более простой уровень. Позже его можно поднять. <a href="{{ url_for('auth.register') }}">Выбрать уровень при регистрации</a></p>
-</section>
-
-<section class="band" id="check">
-  <h2>Практика и обратная связь</h2>
-  <p class="lead">Задачи решают в тетради и отправляют фото на проверку. Задание засчитывается только после неё. Пока не набрано {{ pass_practice }}% практики, следующее занятие не открывается. Проверка не подсказывает готовый ответ.</p>
-  <div class="note">
-    <p>Автоматическая проверка может ошибиться, особенно если запись неразборчива, кадр обрезан или слиплись дроби, степени и корни. Тогда лист лучше переснять и отправить снова. С замечанием можно не согласиться и написать администратору.</p>
-    <p>Проверка фото списывается с баланса: без неё практика не двигается. Вопрос помощнику по теории задают по желанию, он тоже списывается с баланса. Тест проверяется на сайте и отдельно не тарифицируется.</p>
-  </div>
-</section>
-
-<section class="band split-2" id="teacher">
-  <div>
-    <h2>Кто ведёт курс</h2>
-    <p class="lead">Содержание, открытие занятий и ответы на обращения держит администратор платформы. Это не формат постоянных индивидуальных уроков.</p>
-    <p class="lead">Написать можно из кабинета, через «Сообщить о проблеме», или на <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>{% if admin_telegram %} и в <a href="https://t.me/{{ admin_telegram }}" rel="noopener">Telegram</a>{% endif %}. Срок ответа заранее не зафиксирован: обращения читаются по очереди.</p>
-  </div>
-  <div>
-    <h2>Стоимость</h2>
-    <p class="lead">Отдельной платы за занятия нет. После регистрации открываются теория, тесты, тексты заданий и кабинет.</p>
-    <ul class="plain">
-      <li><strong>С баланса</strong> — проверка фото, она нужна для зачёта практики. Вопрос помощнику — по желанию.</li>
-      <li><strong>На старте</strong> — {{ starting_balance }} уже на новом аккаунте.</li>
-      <li><strong>Цена</strong> зависит от объёма запроса. Если средств не хватает, запрос не уходит и деньги не списываются.</li>
-    </ul>
-    <p class="band-more"><a href="{{ url_for('auth.pricing') }}">Баланс, пополнение и возврат</a></p>
-  </div>
-</section>
-
-<section class="band" id="faq">
-  <h2>Частые вопросы</h2>
-  <div class="about-faq">
-    <details>
-      <summary>Для кого курс?</summary>
-      <p>Для ученика 9 класса, который готовится к выпускному экзамену по математике сам. Родителю видна программа и то, что входит в доступ.</p>
-    </details>
-    <details>
-      <summary>Сколько занятий в программе?</summary>
-      <p>{{ lesson_count }}. Они идут по порядку: повторение, темы 9 класса, экзаменационный тренинг. Список открыт до регистрации.</p>
-    </details>
-    <details>
-      <summary>Сколько длится занятие?</summary>
-      <p>Около 45 минут. Реальное время зависит от темпа чтения, попыток теста и числа задач.</p>
-    </details>
-    <details>
-      <summary>Можно ли заниматься в своём темпе?</summary>
-      <p>Да. Обязательного расписания нет. Доступ действует, пока аккаунт не удалён. Следующее занятие открывается после практики текущего не меньше чем на {{ pass_practice }}%.</p>
-    </details>
-    <details>
-      <summary>Как выбрать уровень?</summary>
-      <p>По тому, какие задачи сейчас получаются. Уровень описывает сложность заданий курса и не обещает балл на экзамене. Его можно сменить в кабинете.</p>
-    </details>
-    <details>
-      <summary>Обязательно ли отправлять решение на проверку?</summary>
-      <p>Да. Пока фото не проверено и задание не засчитано, практика считается невыполненной и следующее занятие не открывается. Проверка списывается с баланса. Вопрос помощнику по теории можно не задавать.</p>
-    </details>
-    <details>
-      <summary>Гарантирует ли курс определённую оценку?</summary>
-      <p>Нет. Курс помогает готовиться по порядку. Итог зависит от знаний, регулярности и самостоятельной работы.</p>
-    </details>
-  </div>
-  <p class="band-more"><a href="{{ url_for('auth.faq') }}">Все вопросы</a></p>
-</section>
-
-<section class="cta">
-  <h2>Начни подготовку заранее</h2>
-  <p>Пройди программу последовательно, уделяй внимание каждой теме и следи за своим продвижением.</p>
-  <a class="btn btn-primary" href="{{ url_for('auth.program') }}">Посмотреть программу</a>
-  <a class="text-link" href="{{ url_for('auth.login') }}">Уже есть аккаунт? Войти</a>
-</section>
+<button id="toTop" type="button" aria-label="Наверх"><svg><use href="#i-up"/></svg></button>
 {% endblock %}

@@ -110,6 +110,11 @@
   </ul>
 </section>
 
+<section class="about-section" id="contacts">
+  <h2>Документы</h2>
+  <p class="about-lead">Условия доступа и оплаты — в <a href="{{ url_for('auth.offer') }}">публичной оферте</a>. Как обращаемся с данными — в <a href="{{ url_for('auth.privacy') }}">политике конфиденциальности</a> и <a href="{{ url_for('auth.cookies') }}">соглашении о файлах cookie</a>.</p>
+</section>
+
 <section class="cta">
   <h2>Посмотрите программу и начните с первого занятия</h2>
   <p>Регистрация открывает кабинет и первое занятие. Проверка фото списывается с баланса, когда ученик отправляет работу.</p>
@@ -121,10 +126,5 @@
   <a class="btn btn-primary" href="{{ url_for('auth.program') }}">Посмотреть программу</a>
   <a class="text-link" href="{{ url_for('auth.register') }}">Начать подготовку</a>
   {% endif %}
-</section>
-
-<section class="about-section" id="contacts">
-  <h2>Документы</h2>
-  <p class="about-lead">Условия доступа и оплаты — в <a href="{{ url_for('auth.offer') }}">публичной оферте</a>. Как обращаемся с данными — в <a href="{{ url_for('auth.privacy') }}">политике конфиденциальности</a> и <a href="{{ url_for('auth.cookies') }}">соглашении о файлах cookie</a>.</p>
 </section>
 {% endblock %}

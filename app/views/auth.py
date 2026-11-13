@@ -12,19 +12,21 @@ from ..public_site import demo_view, grade_demo, program_groups
 bp = Blueprint("auth", __name__)
 
 
+def _cabinet_url() -> str:
+    if current_user.is_admin:
+        return url_for("admin.dashboard")
+    return url_for("student.dashboard")
+
+
 @bp.route("/")
 def index():
-    if current_user.is_authenticated:
-        if current_user.is_admin:
-            return redirect(url_for("admin.dashboard"))
-        return redirect(url_for("student.dashboard"))
     return render_template("home.html", groups=program_groups())
 
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for("auth.index"))
+        return redirect(_cabinet_url())
     error = None
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
@@ -38,7 +40,7 @@ def login():
             nxt = request.args.get("next")
             if nxt and nxt.startswith("/"):
                 return redirect(nxt)
-            return redirect(url_for("auth.index"))
+            return redirect(_cabinet_url())
         error = "Неверный логин или пароль."
     return render_template("login.html", error=error)
 
@@ -46,7 +48,7 @@ def login():
 @bp.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
-        return redirect(url_for("auth.index"))
+        return redirect(_cabinet_url())
     form = {
         "username": "",
         "email": "",

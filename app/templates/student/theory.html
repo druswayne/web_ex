@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Теория · занятие {{ lesson.number }}{% endblock %}
-{% block extra_css %}
-<style>.theory-progress{position:sticky;top:0;z-index:20}</style>
-{% endblock %}
+{% block extra_css %}{% endblock %}
 {% block content %}
 <div class="theory-progress"
      data-progress-url="{{ url_for('student.theory', number=lesson.number) }}"
@@ -102,7 +100,6 @@
     <a class="btn btn-primary" href="{{ url_for('student.test', number=lesson.number) }}">Пройти тест</a>
   </div>
 </div>
-<button type="button" class="btn btn-primary to-top" id="toTop" aria-label="Наверх">Наверх</button>
 
 <div id="tutorRoot"
      data-chat-url="{{ url_for('student.theory_chat', number=lesson.number) }}"

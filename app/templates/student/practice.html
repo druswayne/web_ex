@@ -15,8 +15,8 @@
 
 <nav class="task-dots">
   {% for a in assignments %}
-  <a class="{% if a.id == current.id %}on{% endif %} {% if a.is_correct %}ok{% endif %} {% if a.id in pending_ids %}wait{% endif %}" data-id="{{ a.id }}" href="{{ url_for('student.practice', number=lesson.number, task=a.id) }}">
-    {{ a.task_code }}
+  <a class="{% if a.id == current.id %}on{% endif %} {% if a.is_correct %}ok{% endif %} {% if a.id in pending_ids %}wait{% endif %}" data-id="{{ a.id }}" href="{{ url_for('student.practice', number=lesson.number, task=a.id) }}" aria-label="{{ a.task_code }}{% if a.is_correct %}, засчитано{% elif a.id in pending_ids %}, на проверке{% elif a.id == current.id %}, текущее{% endif %}">
+    {{ a.task_code }}{% if a.is_correct %} <span aria-hidden="true">✓</span>{% elif a.id in pending_ids %} <span aria-hidden="true">…</span>{% endif %}
   </a>
   {% endfor %}
 </nav>
@@ -109,7 +109,6 @@
   </ul>
 </section>
 {% endif %}
-<button type="button" class="btn btn-primary to-top" id="toTop" aria-label="Наверх">Наверх</button>
 {% endblock %}
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/practice.js') }}" data-status-url="{{ status_url }}" data-pending="{{ 1 if current_pending or pending_ids else 0 }}"></script>

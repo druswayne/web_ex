@@ -1,6 +1,18 @@
 (() => {
   const root = document.querySelector(".theory-progress");
   if (!root) return;
+  const header = document.querySelector(".topbar");
+  const pinProgress = () => {
+    const height = header ? header.offsetHeight : 58;
+    const headerTop = header ? parseFloat(getComputedStyle(header).top) || 0 : 0;
+    root.style.top = `${headerTop + height}px`;
+  };
+  pinProgress();
+  if (header && "ResizeObserver" in window) {
+    new ResizeObserver(pinProgress).observe(header);
+  } else {
+    window.addEventListener("resize", pinProgress);
+  }
   const bar = document.getElementById("theoryBar");
   const barWrap = document.getElementById("theoryBarWrap");
   const pctLabel = document.getElementById("theoryPct");
