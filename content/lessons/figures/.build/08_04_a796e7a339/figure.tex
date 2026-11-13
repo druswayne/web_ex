@@ -1,0 +1,39 @@
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Segoe UI}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+
+\usetikzlibrary{calc,arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[x=1.0000cm,y=1cm,line cap=round,line join=round]
+\definecolor{linec0}{RGB}{35,35,40}
+\definecolor{linec1}{RGB}{35,35,40}
+\definecolor{linec2}{RGB}{35,35,40}
+\definecolor{linec3}{RGB}{35,35,40}
+\definecolor{linec4}{RGB}{35,35,40}
+\definecolor{linec5}{RGB}{35,35,40}
+\definecolor{edgecol}{RGB}{35,35,40}
+\definecolor{hicol}{RGB}{35,35,40}
+\definecolor{angcol}{RGB}{35,35,40}
+\coordinate (A) at (0.0000,0.0000);
+\coordinate (B) at (3.0000,0.0000);
+\coordinate (C) at (0.9000,2.2000);
+\coordinate (A1) at (5.2000,0.0000);
+\coordinate (B1) at (9.7000,0.0000);
+\coordinate (C1) at (6.5500,3.3000);
+\draw[edgecol,line width=1.1pt] (A) -- (B);
+\draw[edgecol,line width=1.1pt] (B) -- (C);
+\draw[edgecol,line width=1.1pt] (C) -- (A);
+\draw[edgecol,line width=1.1pt] (A1) -- (B1);
+\draw[edgecol,line width=1.1pt] (B1) -- (C1);
+\draw[edgecol,line width=1.1pt] (C1) -- (A1);
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (0.000,0.000) {A};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,0.000) {B};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (0.900,2.200) {C};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (5.200,0.000) {A₁};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (9.700,0.000) {B₁};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (6.550,3.300) {C₁};
+\end{tikzpicture}
+\end{document}
