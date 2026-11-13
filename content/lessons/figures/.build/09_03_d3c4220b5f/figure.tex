@@ -1,0 +1,36 @@
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Segoe UI}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+
+\usetikzlibrary{calc,arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[x=1.0000cm,y=1cm,line cap=round,line join=round]
+\definecolor{linec0}{RGB}{35,35,40}
+\definecolor{linec1}{RGB}{35,35,40}
+\definecolor{linec2}{RGB}{35,35,40}
+\definecolor{linec3}{RGB}{35,35,40}
+\definecolor{linec4}{RGB}{35,35,40}
+\definecolor{linec5}{RGB}{35,35,40}
+\definecolor{edgecol}{RGB}{35,35,40}
+\definecolor{hicol}{RGB}{35,35,40}
+\definecolor{angcol}{RGB}{35,35,40}
+\coordinate (A) at (0.0000,0.0000);
+\coordinate (B) at (6.0000,0.0000);
+\coordinate (C) at (3.0000,4.0000);
+\coordinate (H) at (3.0000,0.0000);
+\draw[edgecol,line width=1.1pt] (A) -- (B);
+\draw[edgecol,line width=1.1pt] (A) -- (C);
+\draw[line width=1.4pt,color={rgb,255:red,35;green,35;blue,40},dashed] (C) -- (H);
+\draw[line width=1.4pt,color={rgb,255:red,35;green,35;blue,40}] (H) -- (A);
+\draw[edgecol,line width=0.7pt] (3.000,0.220) -- (2.780,0.220) -- (2.780,0.000);
+\node[font=\bfseries\Large,text={rgb,255:red,35;green,35;blue,40}] at (1.500,-0.350) {3};
+\node[font=\bfseries\Large,text={rgb,255:red,35;green,35;blue,40}] at (3.350,1.800) {4};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (0.000,0.000) {A};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (6.000,0.000) {B};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,4.000) {C};
+\node[font=\bfseries\large,inner sep=2pt,anchor=south west] at (3.000,0.000) {H};
+\end{tikzpicture}
+\end{document}

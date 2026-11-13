@@ -1981,7 +1981,7 @@ body.site .site-nav a:not(.btn):hover,
 body.site .site-nav a:not(.btn):visited,
 body.site .site-nav a:not(.btn):focus,
 body.site .site-nav a:not(.btn)[aria-current="page"] {
-  color: #111111;
+  color: #c5d4ee;
   font-size: 15px;
   font-weight: 650;
   white-space: nowrap;
@@ -2588,7 +2588,7 @@ body.site .site-nav a:not(.btn)::after {
   right: 0;
   bottom: -6px;
   height: 2px;
-  background: #111111;
+  background: #ffb02e;
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform .2s ease;
@@ -2625,8 +2625,10 @@ body.site.nav-open .site-nav { animation: site-menu .22s ease; }
 body.site .site-nav a:not(.btn),
 body.site .site-nav a:not(.btn):link,
 body.site .site-nav a:not(.btn):visited,
+body.site .site-nav a:not(.btn):focus {
+  color: #c5d4ee;
+}
 body.site .site-nav a:not(.btn):hover,
-body.site .site-nav a:not(.btn):focus,
 body.site .site-nav a:not(.btn)[aria-current="page"] {
-  color: #111111;
+  color: #fff;
 }
