@@ -1,0 +1,48 @@
+\documentclass[tikz,border=12pt]{standalone}
+\usepackage{fontspec}
+\setmainfont{Segoe UI}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+
+\usetikzlibrary{calc,arrows.meta}
+
+\begin{document}
+\begin{tikzpicture}[x=1.0000cm,y=1cm,line cap=round,line join=round]
+\definecolor{linec0}{RGB}{35,35,40}
+\definecolor{linec1}{RGB}{35,35,40}
+\definecolor{linec2}{RGB}{35,35,40}
+\definecolor{linec3}{RGB}{35,35,40}
+\definecolor{linec4}{RGB}{35,35,40}
+\definecolor{linec5}{RGB}{35,35,40}
+\definecolor{edgecol}{RGB}{35,35,40}
+\definecolor{hicol}{RGB}{35,35,40}
+\definecolor{angcol}{RGB}{35,35,40}
+\coordinate (L) at (-2.7000,0.0000);
+\coordinate (R) at (5.7000,0.0000);
+\coordinate (B) at (1.0000,0.0000);
+\coordinate (U) at (1.0000,0.1600);
+\coordinate (S) at (1.0000,0.4200);
+\coordinate (T) at (5.7000,0.4200);
+\draw[edgecol,line width=1.1pt,-{Stealth[length=2.1mm]}] (L) -- (R);
+\draw[hicol,line width=1.6pt] (S) -- (T);
+\draw[edgecol,line width=1.15pt] (B) circle [x radius=0.1600, y radius=0.1600];
+\path (-0.360,-1.360) rectangle (2.360,1.360);
+\draw[edgecol,line width=1.05pt] (-2.000,-0.220) -- (-2.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (-2.000,-0.380) {-2};
+\draw[edgecol,line width=1.05pt] (-1.000,-0.220) -- (-1.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (-1.000,-0.380) {-1};
+\draw[edgecol,line width=1.05pt] (0.000,-0.220) -- (0.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (0.000,-0.380) {0};
+\draw[edgecol,line width=1.05pt] (1.000,-0.220) -- (1.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (1.000,-0.380) {1};
+\draw[edgecol,line width=1.05pt] (2.000,-0.220) -- (2.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (2.000,-0.380) {2};
+\draw[edgecol,line width=1.05pt] (3.000,-0.220) -- (3.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (3.000,-0.380) {3};
+\draw[edgecol,line width=1.05pt] (4.000,-0.220) -- (4.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (4.000,-0.380) {4};
+\draw[edgecol,line width=1.05pt] (5.000,-0.220) -- (5.000,0.220);
+\node[anchor=north,inner sep=1pt,font=\small] at (5.000,-0.380) {5};
+\path (-3.050,-0.950) rectangle (6.250,0.720);
+\end{tikzpicture}
+\end{document}
