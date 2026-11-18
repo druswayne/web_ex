@@ -5,7 +5,7 @@
 <section class="hero-card compact">
   <div>
     <h1>Практическая часть</h1>
-    <p class="muted">Решайте в тетради, фотографируйте и отправляйте на проверку. Чтобы открыть следующее занятие, нужно {{ pass_percent|int }}% засчитанных заданий.</p>
+    <p class="muted">Решайте в тетради, фотографируйте и отправляйте на проверку. Чтобы открыть следующее занятие, нужно {{ pass_percent|int }}% засчитанных заданий. Если в тесте или практике была ошибка, после этого ещё нужна работа над ошибками.</p>
   </div>
   <div class="stat mini">
     <span>Прогресс</span>
@@ -34,7 +34,9 @@
   <a class="btn btn-primary" href="{{ url_for('student.practice', number=lesson.number, task=next_task.id) }}">Следующее задание</a>
   {% elif state.practice %}
   <p>Практическая часть занятия выполнена.</p>
-  {% if lesson.number < lesson_count %}
+  {% if state.error_work_required and not state.error_work_passed %}
+  <a class="btn btn-primary" href="{{ url_for('student.error_work', number=lesson.number) }}">Работа над ошибками</a>
+  {% elif lesson.number < lesson_count %}
   <a class="btn btn-primary" href="{{ url_for('student.lesson', number=lesson.number + 1) }}">Следующее занятие</a>
   {% endif %}
   {% endif %}

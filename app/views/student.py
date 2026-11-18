@@ -37,7 +37,16 @@ from ..check_jobs import (
 from ..accounts import email_error, normalize_email, password_error
 from ..config import LEVEL_BANDS, UPLOADS_DIR
 from ..content import display_prompt, find_lesson_video, get_bank, render_markdown
+from ..error_work import (
+    get_error_work,
+    pass_percent as error_work_pass_percent,
+    preparation_quote,
+    queue_error_work,
+    record_error_attempt,
+    topic_labels,
+)
 from ..models import (
+    ErrorWorkAttempt,
     PracticeAttempt,
     SUPPORT_KINDS,
     SupportMessage,
@@ -99,7 +108,7 @@ def dashboard():
     bank = get_bank()
     states = _states()
     progresses = [s["progress"] for s in states.values()]
-    done = sum(1 for s in states.values() if s["practice"])
+    done = sum(1 for s in states.values() if s["stage"] == "done")
     unlocked = sum(1 for s in states.values() if s["unlocked"])
     tests = TestAttempt.query.filter_by(user_id=current_user.id).all()
     avg_test = round(sum(t.score for t in tests) / len(tests), 1) if tests else None
@@ -109,7 +118,7 @@ def dashboard():
     current = None
     for lsn in bank.all():
         st = states[lsn.number]
-        if st["unlocked"] and not st["practice"]:
+        if st["unlocked"] and st["stage"] != "done":
             current = (lsn, st)
             break
     return render_template(
@@ -261,12 +270,16 @@ def lesson(number: int):
         ensure_assignments(current_user, number)
         refresh_practice_progress(current_user, number)
         st = lesson_state(current_user, number)
+    error_work = _resume_error_work(number, st)
     log_activity(current_user.id, "lesson_open", lesson_number=number)
     db.session.commit()
+    nxt = number + 1
     return render_template(
         "student/lesson.html",
         lesson=lsn,
         state=st,
+        error_work=error_work,
+        next_open=nxt in get_bank().lessons and is_unlocked(current_user, nxt),
         has_video=find_lesson_video(number) is not None,
     )
 
@@ -713,4 +726,159 @@ def practice_status(number: int):
             "current_correct": current_correct,
             "current_verdict": current_verdict,
         }
+    )
+
+
+def _resume_error_work(number: int, state: dict):
+    work = get_error_work(current_user.id, number)
+    if work is None or not work.required:
+        return None
+    if state.get("error_work_passed"):
+        return work
+    if work.status in {"needs_payment", "generating"}:
+        queue_error_work(current_user, work)
+    return work
+
+
+def _error_questions(work) -> list[dict]:
+    items = []
+    for question in work.questions or []:
+        options = []
+        for option in question.get("options") or []:
+            letter = str(option.get("letter") or "")
+            options.append((letter, render_markdown(str(option.get("text") or ""))))
+        items.append(
+            {
+                "code": str(question.get("code") or ""),
+                "topic": str(question.get("topic") or ""),
+                "multi": bool(question.get("multi")),
+                "prompt_html": render_markdown(str(question.get("prompt") or "")),
+                "options": options,
+            }
+        )
+    return items
+
+
+def _error_quote(work):
+    if work is None or work.status not in {"needs_payment", "failed"}:
+        return None
+    try:
+        return preparation_quote(work, current_user.level_band)
+    except Exception:
+        current_app.logger.exception("error work quote failed")
+        return None
+
+
+def _error_page_context(number: int, work, state: dict) -> dict:
+    attempts = (
+        ErrorWorkAttempt.query.filter_by(error_work_id=work.id)
+        .order_by(ErrorWorkAttempt.created_at.desc())
+        .all()
+    )
+    report = work.report if isinstance(work.report, dict) else {}
+    attention = []
+    for item in report.get("attention") or []:
+        if not isinstance(item, dict):
+            continue
+        attention.append(
+            {
+                "title": item.get("title") or "На что смотреть",
+                "html": render_markdown(str(item.get("text") or "")),
+            }
+        )
+    return {
+        "lesson": _lesson(number),
+        "state": state,
+        "work": work,
+        "attempts": attempts,
+        "questions": _error_questions(work) if work.status == "ready" else [],
+        "topics": topic_labels(work.errors_json),
+        "report_title": report.get("title") or "Работа над ошибками",
+        "report_summary": render_markdown(str(report.get("summary") or "")),
+        "attention": attention,
+        "quote": _error_quote(work),
+        "pass_percent": error_work_pass_percent(),
+    }
+
+
+@bp.route("/lessons/<int:number>/errors", methods=["GET", "POST"])
+@student_required
+def error_work(number: int):
+    if not is_unlocked(current_user, number):
+        flash("Это занятие ещё закрыто.", "warning")
+        return redirect(url_for("student.dashboard"))
+    st = lesson_state(current_user, number)
+    if not st["practice"]:
+        flash("Работа над ошибками откроется после зачёта практики.", "info")
+        return redirect(url_for("student.lesson", number=number))
+    if not st["error_work_required"]:
+        flash("В этом занятии ошибок не было — работа над ошибками не нужна.", "info")
+        return redirect(url_for("student.lesson", number=number))
+    work = _resume_error_work(number, st)
+    if work is None:
+        flash("Работа над ошибками ещё не подготовлена.", "warning")
+        return redirect(url_for("student.lesson", number=number))
+    if request.method == "POST":
+        if work.status != "ready" or not work.questions:
+            flash("Задания ещё готовятся.", "info")
+            return redirect(url_for("student.error_work", number=number))
+        answers = {
+            str(question.get("code") or ""): request.form.getlist(str(question.get("code") or ""))
+            for question in work.questions
+        }
+        attempt = record_error_attempt(current_user, work, answers)
+        db.session.commit()
+        return redirect(
+            url_for("student.error_work_result", number=number, attempt_id=attempt.id)
+        )
+    if work.status == "ready":
+        log_activity(current_user.id, "error_work_open", lesson_number=number)
+    db.session.commit()
+    return render_template("student/error_work.html", **_error_page_context(number, work, st))
+
+
+@bp.route("/lessons/<int:number>/errors/prepare", methods=["POST"])
+@student_required
+def error_work_prepare(number: int):
+    if not is_unlocked(current_user, number):
+        abort(403)
+    st = lesson_state(current_user, number)
+    work = get_error_work(current_user.id, number)
+    if work is None or not work.required or not st["practice"]:
+        return redirect(url_for("student.lesson", number=number))
+    if st["error_work_passed"] or work.status == "ready":
+        return redirect(url_for("student.error_work", number=number))
+    status = queue_error_work(current_user, work, allow_failed=True)
+    db.session.commit()
+    if status == "needs_payment":
+        flash("На балансе не хватает средств, чтобы подготовить работу над ошибками.", "warning")
+    elif status == "failed":
+        flash(work.fail_note or "Подготовка сейчас недоступна.", "warning")
+    return redirect(url_for("student.error_work", number=number))
+
+
+@bp.route("/lessons/<int:number>/errors/status")
+@student_required
+def error_work_status(number: int):
+    if not is_unlocked(current_user, number):
+        abort(403)
+    work = get_error_work(current_user.id, number)
+    if work is None:
+        abort(404)
+    return jsonify({"status": work.status, "ready": work.status == "ready"})
+
+
+@bp.route("/lessons/<int:number>/errors/<int:attempt_id>")
+@student_required
+def error_work_result(number: int, attempt_id: int):
+    attempt = ErrorWorkAttempt.query.filter_by(
+        id=attempt_id, user_id=current_user.id, lesson_number=number
+    ).first_or_404()
+    st = lesson_state(current_user, number)
+    return render_template(
+        "student/error_work_result.html",
+        lesson=_lesson(number),
+        state=st,
+        attempt=attempt,
+        pass_percent=error_work_pass_percent(),
     )

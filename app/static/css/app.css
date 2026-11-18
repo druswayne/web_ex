@@ -393,6 +393,25 @@ a.lesson-tile:hover {
 }
 .path-card .bar { margin-top: 8px; max-width: 280px; }
 .path-progress { margin: 4px 0 0; font-size: 14px; font-weight: 700; color: var(--teal-dark); }
+.lesson-tile.errors .tile-head em { background: #fde8e6; color: var(--bad); }
+.ew-lead { font-size: 1.05rem; line-height: 1.6; max-width: 68ch; }
+.focus-list { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.focus-item {
+  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start;
+  padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #f7fbf9;
+}
+.focus-num {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--teal); color: #fff; font-weight: 800;
+}
+.focus-item h3 { margin: 0 0 4px; font-size: 1rem; }
+.focus-item .md-body { color: var(--ink); }
+.focus-item .md-body p:last-child { margin-bottom: 0; }
+.ew-topics { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ew-topics span {
+  padding: 4px 10px; border-radius: 999px; background: #e7f3ee; color: var(--teal-dark); font-size: 13px; font-weight: 700;
+}
+.ew-note { margin: 8px 0 0; }
 .goals-card {
   background: #e7f3ee;
   border-color: #dce6e1;
@@ -768,6 +787,9 @@ body:has(.sticky-actions) .to-top {
 .task-dots a.ok { background: #eef8f2; }
 .task-dots a.wait { background: #f8efd8; }
 .pill.wait { background: #f8efd8; color: var(--amber); }
+.path-card > .pill.wait {
+  white-space: normal; text-align: center; line-height: 1.25; max-width: 11rem; justify-content: center;
+}
 .wait-card { background: #fbf6ea; }
 .wait-card h3 { margin: 0 0 8px; }
 .wait-card p { margin: 0 0 14px; font-weight: 700; line-height: 1.45; }

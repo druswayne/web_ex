@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Работа над ошибками · занятие {{ lesson.number }}{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.lesson', number=lesson.number) }}">Занятие {{ lesson.number }}</a> · работа над ошибками</p>
+
+<section class="hero-card compact">
+  <div>
+    <p class="eyebrow">Занятие {{ lesson.number }}</p>
+    <h1>{{ report_title if work.status == 'ready' else 'Работа над ошибками' }}</h1>
+    {% if work.status == 'ready' %}
+    <div class="ew-lead md-body">{{ report_summary|safe }}</div>
+    {% elif work.status == 'generating' %}
+    <p class="ew-lead">Собираем разбор и задания по ошибкам, которые были допущены при прохождении этого занятия. Страница обновится, когда они будут готовы.</p>
+    {% elif work.status == 'needs_payment' %}
+    <p class="ew-lead">В тесте или практике были ошибки. Чтобы открыть следующее занятие, нужна работа над ними. Подготовку делает модель, сумма списывается с баланса за запрос и ответ. Сам тест и повторные попытки бесплатны.</p>
+    {% else %}
+    <p class="ew-lead">{{ work.fail_note or 'Подготовить задания пока не получилось.' }}</p>
+    {% endif %}
+  </div>
+  <span class="pill {% if state.error_work_passed %}ok{% elif work.status == 'failed' %}bad{% endif %}">
+    {% if state.error_work_passed %}порог взят
+    {% elif work.status == 'ready' %}порог {{ pass_percent|int }}%
+    {% elif work.status == 'generating' %}готовится
+    {% elif work.status == 'needs_payment' %}нужен баланс
+    {% else %}не готово{% endif %}
+  </span>
+</section>
+
+{% if work.status != 'ready' %}
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>{% if work.status == 'generating' %}Что уже известно{% else %}Что будет в разборе{% endif %}</h2>
+      <p class="muted">
+        {% if work.error_count %}
+        Тест по теории — {{ work.test_error_count }}, практика — {{ work.practice_error_count }}.
+        Заданий будет {{ work.question_count }}.
+        {% endif %}
+        Подробный разбор появится вместе с заданиями.
+      </p>
+    </div>
+  </div>
+  {% if topics %}
+  <div class="ew-topics">
+    {% for topic in topics %}<span>{{ topic }}</span>{% endfor %}
+  </div>
+  {% endif %}
+  {% if work.status == 'needs_payment' %}
+  <p class="ew-note">На балансе {{ current_user.balance_byn|byn }}.{% if quote %} Ориентир списания — {{ quote|byn }}. Точная сумма зависит от длины ответа.{% endif %}</p>
+  <div class="actions">
+    {% if quote and current_user.balance_byn >= quote %}
+    <form method="post" action="{{ url_for('student.error_work_prepare', number=lesson.number) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit">Подготовить задания</button>
+    </form>
+    {% elif topup_url %}
+    <a class="btn btn-primary" href="{{ topup_url }}" target="_blank" rel="noopener noreferrer">Пополнить в Telegram</a>
+    {% endif %}
+  </div>
+  {% elif work.status == 'failed' %}
+  <div class="actions">
+    <form method="post" action="{{ url_for('student.error_work_prepare', number=lesson.number) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" type="submit">Повторить подготовку</button>
+    </form>
+  </div>
+  <p class="muted ew-note">Повторный запрос снова списывается с баланса, если модель успеет ответить.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if work.status == 'ready' %}
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h2>На что обратить внимание</h2>
+      <p class="muted">Это места, где ответы расходились с правилом. Задания ниже тренируют именно их.</p>
+    </div>
+    <span class="pill">{{ attention|length }} пунктов</span>
+  </div>
+  <ol class="focus-list">
+    {% for item in attention %}
+    <li class="focus-item">
+      <span class="focus-num">{{ loop.index }}</span>
+      <div>
+        <h3>{{ item.title }}</h3>
+        <div class="md-body">{{ item.html|safe }}</div>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="hero-card compact">
+  <div>
+    <h2>Задания</h2>
+    <p class="muted">{{ questions|length }} вопросов по ошибкам теста ({{ work.test_error_count }}) и практики ({{ work.practice_error_count }}). Зачёт — {{ pass_percent|int }}% и выше. Верных ответов может быть несколько, это написано в условии. Пока зачёта нет, следующее занятие закрыто. Повтор этой попытки бесплатный: задания те же.</p>
+    {% if attempts %}
+    <p class="muted">Попыток: {{ attempts|length }}{% if work.best_score is not none %} · лучший результат {{ work.best_score }}%{% endif %}</p>
+    {% endif %}
+  </div>
+  {% if state.error_work_passed %}
+  <span class="pill ok">зачёт есть</span>
+  {% endif %}
+</section>
+
+<form method="post" class="quiz">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for item in questions %}
+  <fieldset class="card q-card" data-multi="{{ 1 if item.multi else 0 }}">
+    <div class="q-head">
+      <span class="q-num">{{ item.code }}</span>
+      {% if item.topic %}<span class="q-topic">{{ item.topic }}</span>{% endif %}
+      {% if item.multi %}
+      <span class="pill">несколько верных</span>
+      {% else %}
+      <span class="pill">один верный</span>
+      {% endif %}
+    </div>
+    <div class="q-prompt md-body">{{ item.prompt_html|safe }}</div>
+    <div class="opts">
+      {% for letter, html in item.options %}
+      <label class="opt">
+        {% if item.multi %}
+        <input type="checkbox" name="{{ item.code }}" value="{{ letter }}">
+        {% else %}
+        <input type="radio" name="{{ item.code }}" value="{{ letter }}">
+        {% endif %}
+        <span><b>{{ letter }})</b> <span class="md-body">{{ html|safe }}</span></span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endfor %}
+  <div class="sticky-actions">
+    <button class="btn btn-primary" type="submit">Отправить попытку</button>
+  </div>
+</form>
+{% endif %}
+
+{% if work.status == 'generating' %}
+<script>
+  const statusUrl = {{ url_for('student.error_work_status', number=lesson.number)|tojson }};
+  const wait = async () => {
+    try {
+      const res = await fetch(statusUrl, { headers: { Accept: "application/json" } });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.status && data.status !== "generating") window.location.reload();
+    } catch (_err) { /* следующая проверка */ }
+  };
+  setInterval(wait, 4000);
+</script>
+{% endif %}
+{% endblock %}

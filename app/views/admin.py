@@ -50,6 +50,7 @@ MIN_PASSWORD_LEN = 6
 LEDGER_LABELS = {
     "tutor": "Помощник по теории",
     "practice": "Проверка решения",
+    "error_work": "Работа над ошибками",
     "admin": "Изменение баланса",
 }
 
@@ -137,6 +138,12 @@ ACTION_LABELS = {
     "practice_queued": "Отправил решение на проверку",
     "practice_admin_credit": "Учитель засчитал задание",
     "practice_admin_uncredit": "Учитель снял зачёт задания",
+    "practice_passed": "Практика засчитана",
+    "error_work_required": "Нужна работа над ошибками",
+    "error_work_skipped": "Работа над ошибками не нужна",
+    "error_work_ready": "Работа над ошибками подготовлена",
+    "error_work_submit": "Сдана работа над ошибками",
+    "error_work_open": "Открыл работу над ошибками",
     "lesson_unlocked": "Занятие открыто",
     "lesson_locked": "Занятие закрыто",
     "lesson_complete": "Занятие пройдено",
@@ -169,7 +176,7 @@ def dashboard():
     cards = []
     for s in students:
         states = [lesson_state(s, lsn.number) for lsn in bank.all()]
-        done = sum(1 for st in states if st["practice"])
+        done = sum(1 for st in states if st["stage"] == "done")
         cards.append(
             {
                 "user": s,

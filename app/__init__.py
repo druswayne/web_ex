@@ -210,8 +210,10 @@ def create_app() -> Flask:
         resume_pending_tutor(app)
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
             from .check_jobs import start_practice_watch
+            from .error_jobs import resume_generating_error_work
 
             start_practice_watch(app)
+            resume_generating_error_work(app)
 
     return app
 

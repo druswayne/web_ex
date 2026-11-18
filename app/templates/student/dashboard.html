@@ -36,7 +36,7 @@
   <summary>С чего начать</summary>
   <ol>
     <li>Сейчас выбран уровень «{{ LEVEL_LABELS[current_user.level_band] }}». Его можно сменить в данных.</li>
-    <li>Открыто первое занятие: теория, тест, затем практика. Задание засчитывается после проверки фото. Без неё следующее занятие не откроется.</li>
+    <li>Открыто первое занятие: теория, тест, затем практика. Задание засчитывается после проверки фото. Если в занятии были ошибки, следующее откроется после работы над ними.</li>
     <li>Что уже сделано и что открыто дальше, видно на этой странице.</li>
     <li>Если что-то непонятно — раздел «Сообщить о проблеме».</li>
   </ol>
@@ -69,7 +69,7 @@
 <section class="card">
   <div class="card-head">
     <h2>Карта курса</h2>
-    <p class="muted">Первое занятие открыто сразу. Следующие открываются после 80% практической части или учителем.</p>
+    <p class="muted">Первое занятие открыто сразу. Следующее открывается после {{ config.PRACTICE_PASS_PERCENT|int }}% практики. Если были ошибки, перед этим нужна работа над ошибками. Учитель тоже может открыть занятие.</p>
   </div>
   <div class="lesson-grid">
     {% for lsn in lessons %}
@@ -80,7 +80,12 @@
       {% set pok = p.practice_correct or 0 %}
       {% set pall = p.practice_total or 0 %}
       {% set pr = 100 if st.practice else ((100 * pok / pall)|round|int if pall else 0) %}
+      {% set ew = 100 if st.error_work_passed else 0 %}
+      {% if st.error_work_required %}
+      {% set done_pct = ((th + te + pr + ew) / 4)|round|int %}
+      {% else %}
       {% set done_pct = ((th + te + pr) / 3)|round|int %}
+      {% endif %}
       {% set sc = success.get(lsn.number) %}
       {% set ok_pct = sc.pct if sc else 0 %}
       {% set steps = (1 if st.theory else 0) + (1 if st.test else 0) + (1 if st.practice else 0) %}
@@ -94,6 +99,7 @@
           <b class="tile-num">{{ '%02d'|format(lsn.number) }}</b>
           <em>
             {% if st.stage == 'done' %}готово
+            {% elif st.stage == 'errors' %}ошибки
             {% elif st.stage == 'practice' %}практика
             {% elif st.stage == 'test' %}тест
             {% elif st.stage == 'theory' %}теория

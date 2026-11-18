@@ -77,7 +77,9 @@
       {% set p_pct = ((100 * p_ok / p_all)|round|int) if p_all else 0 %}
       <h3>Практическая часть</h3>
       <p>
-        {% if state.practice %}Пройдена, следующее занятие открыто
+        {% if state.practice and state.error_work_required and not state.error_work_passed %}Пройдена. Дальше — работа над ошибками
+        {% elif state.practice and next_open %}Пройдена, следующее занятие открыто
+        {% elif state.practice %}Пройдена
         {% elif state.test %}Нужно {{ config.PRACTICE_PASS_PERCENT|int }}% засчитанных заданий
         {% else %}Откроется после теста{% endif %}
       </p>
@@ -90,5 +92,38 @@
       {% if state.practice %}готово{% elif state.test %}доступна{% else %}закрыта{% endif %}
     </span>
   {% if state.test %}</a>{% else %}</div>{% endif %}
+
+  {% if state.practice and state.error_work_required %}
+  <a class="path-card" href="{{ url_for('student.error_work', number=lesson.number) }}">
+    <b>4</b>
+    <div>
+      <h3>Работа над ошибками</h3>
+      <p>
+        {% if state.error_work_passed %}Сдана{% if error_work and error_work.best_score is not none %} · лучший результат {{ error_work.best_score }}%{% endif %}{% if next_open %}, следующее занятие открыто{% endif %}
+        {% else %}По ошибкам, которые были допущены при прохождении этого занятия.
+        {% if error_work and error_work.status == 'generating' %}Следующее занятие откроется после {{ config.ERROR_WORK_PASS_PERCENT|int }}%.
+        {% elif error_work and error_work.status == 'needs_payment' %}Подготовка заданий списывается с баланса.
+        {% elif error_work and error_work.status == 'failed' %}Подготовку нужно повторить.
+        {% elif error_work and error_work.status == 'ready' %}Нужно {{ config.ERROR_WORK_PASS_PERCENT|int }}%. Пока порог не взят, следующее занятие закрыто.
+        {% endif %}
+        {% endif %}
+      </p>
+      {% if error_work and error_work.error_count %}
+      <p class="path-progress">Тест {{ error_work.test_error_count }} · практика {{ error_work.practice_error_count }}{% if error_work.question_count %} · {{ error_work.question_count }} заданий{% endif %}</p>
+      {% endif %}
+      {% if error_work and error_work.best_score is not none and not state.error_work_passed %}
+      <div class="bar"><i style="width: {{ error_work.best_score }}%"></i></div>
+      {% endif %}
+    </div>
+    <span class="pill {% if state.error_work_passed %}ok{% elif error_work and error_work.status == 'generating' %}wait{% elif error_work and error_work.status == 'failed' %}bad{% endif %}">
+      {% if state.error_work_passed %}готово
+      {% elif error_work and error_work.status == 'generating' %}готовится, скоро будет доступна
+      {% elif error_work and error_work.status == 'needs_payment' %}нужен баланс
+      {% elif error_work and error_work.status == 'failed' %}сбой
+      {% elif error_work and error_work.status == 'ready' %}доступна
+      {% else %}ожидает{% endif %}
+    </span>
+  </a>
+  {% endif %}
 </div>
 {% endblock %}

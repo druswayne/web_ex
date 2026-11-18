@@ -14,8 +14,8 @@
 ### Уровень 3–4 балла
 
 С1. в)  
-С2. б)  
-С3. в)  
+С2. $0$  
+С3. $\sin\alpha=\dfrac45$; $\tg\alpha=\dfrac43$  
 С4. $5\text{ см}$  
 С5. $12\text{ см}^2$  
 С6. $(x-5)(x+5)$
@@ -26,25 +26,25 @@
 С2. $2\sqrt{19}\text{ см}$  
 С3. $44\text{ см}$  
 С4. $\sin\alpha=\frac{12}{13}$; $\tg\alpha=\frac{12}{5}$  
-С5. $6\text{ см}$  
+С5. высота $4\sqrt3\text{ см}$; катеты $8\text{ см}$ и $8\sqrt3\text{ см}$  
 С6. $9$
 
 ### Уровень 7–8 баллов
 
-С1. $\sin\alpha=\frac45$; $\cos\alpha=\frac35$  
-С2. $8\sqrt3\text{ см}$; $4\sqrt3\text{ см}$  
-С3. $\cos\alpha=\frac{24}{25}$; $\tg\alpha=\frac{7}{24}$; $\ctg\alpha=\frac{24}{7}$  
-С4. $-\frac32$  
-С5. $42\sqrt3\text{ см}^2$  
+С1. катет против $60^\circ$ — $6\sqrt3\text{ см}$; прилежащий — $6\text{ см}$; гипотенуза — $12\text{ см}$  
+С2. $\sin\alpha=\dfrac{8}{17}$; $\cos\alpha=\dfrac{15}{17}$; $\ctg\alpha=\dfrac{15}{8}$  
+С3. $\cos\alpha=-\dfrac{12}{13}$; $\tg\alpha=-\dfrac{5}{12}$  
+С4. $1-\dfrac{\sqrt3}{3}$  
+С5. $60^\circ$  
 С6. $x<-5$ или $x>2$
 
 ### Уровень 9–10 баллов
 
-С1. $15\text{ см}$; $20\text{ см}$; $150\text{ см}^2$; $\sin\alpha=\frac35$  
-С2. $\sin\alpha=\frac35$; $\cos\alpha=\frac45$; $\ctg\alpha=\frac43$  
-С3. $0$  
-С4. $\frac{36}{5}\text{ см}$  
-С5. $35\sqrt2\text{ см}^2$  
+С1. катеты $15\text{ см}$ и $20\text{ см}$; гипотенуза $25\text{ см}$; $\sin\alpha=\dfrac35$  
+С2. $14\sqrt3\text{ см}^2$; $13\text{ см}$  
+С3. $-\dfrac12$  
+С4. $\dfrac{36}{5}\text{ см}$  
+С5. гипотенуза $25\text{ см}$; второй катет $15\text{ см}$; площадь $150\text{ см}^2$  
 С6. $x+4$; $x\ge -1$
 
 ## Ответы к домашнему заданию
@@ -52,9 +52,9 @@
 ### Уровень 1–2 балла
 
 Д1. $\frac{\sqrt2}{2}$  
-Д2. $13\text{ см}$  
+Д2. $10\text{ см}^2$  
 Д3. $7\sqrt3\text{ см}$  
-Д4. $1$  
+Д4. $6\text{ см}$  
 Д5. $-\frac12$  
 Д6. $32$  
 Д7. $4a+5$
@@ -62,7 +62,7 @@
 ### Уровень 3–4 балла
 
 Д1. $\frac{2\sqrt3}{3}$  
-Д2. $\frac12$  
+Д2. высота $4\text{ см}$; площадь $20\text{ см}^2$  
 Д3. $\frac{15}{17}$  
 Д4. $-\frac{\sqrt3}{3}$  
 Д5. $15\sqrt3\text{ см}^2$  
@@ -72,7 +72,7 @@
 ### Уровень 5–6 баллов
 
 Д1. $\sin\alpha=\frac7{25}$; $\cos\alpha=\frac{24}{25}$  
-Д2. $10\text{ см};10\sqrt3\text{ см}$  
+Д2. противолежащий $10\sqrt3\text{ см}$; прилежащий $10\text{ см}$  
 Д3. $\sin\alpha=\frac5{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
 Д4. $0$  
 Д5. $10\text{ см};25\text{ см}$  
@@ -82,10 +82,10 @@
 ### Уровень 7–8 баллов
 
 Д1. $\sin\alpha=\frac5{13}$; $\cos\alpha=\frac{12}{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
-Д2. $2\sqrt3\text{ см};4\sqrt3\text{ см}$  
+Д2. катет при угле $30^\circ$ с гипотенузой — $4\sqrt3\text{ см}$; второй катет — $4\text{ см}$; гипотенуза — $8\text{ см}$  
 Д3. $\sin\alpha=\frac5{13}$; $\cos\alpha=\frac{12}{13}$  
 Д4. $-\frac{\sqrt2+1}{2}$  
-Д5. $45\text{ см}^2$  
+Д5. $30\text{ см}^2$  
 Д6. $-3<x<\frac12$  
 Д7. $x(x-3)(x+3)$
 
@@ -93,8 +93,8 @@
 
 Д1. $15\text{ см};36\text{ см};39\text{ см};\sin\alpha=\frac5{13};\cos\alpha=\frac{12}{13}$  
 Д2. $15\text{ см}$; $20\text{ см}$; $12\text{ см}$; $150\text{ см}^2$  
-Д3. $\cos\alpha=\frac{12}{13}$; $\tg\alpha=\frac5{12}$; $\ctg\alpha=\frac{12}{5}$  
+Д3. $\cos\alpha=-\dfrac{15}{17}$; $\tg\alpha=-\dfrac{8}{15}$; $\ctg\alpha=-\dfrac{15}{8}$  
 Д4. $\frac{\sqrt3}{2}+\frac{\sqrt2}{2}-\frac{\sqrt3}{3}$  
-Д5. $30\sqrt3\text{ см}^2$; $13\text{ см}$  
+Д5. $15\sqrt3\text{ см}^2$; $14\text{ см}$  
 Д6. $x+5$; $x>4$  
 Д7. $40$

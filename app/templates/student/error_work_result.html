@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Результат · работа над ошибками{% endblock %}
+{% block content %}
+<p class="crumb"><a href="{{ url_for('student.error_work', number=lesson.number) }}">Работа над ошибками</a> · попытка {{ attempt.attempt_no }}</p>
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Работа над ошибками</p>
+    <h1>{{ attempt.score }}%</h1>
+    <p>{{ attempt.correct_count }} из {{ attempt.total_count }} верно. Порог — {{ pass_percent|int }}%.</p>
+  </div>
+  <span class="pill {% if attempt.passed %}ok{% else %}bad{% endif %}">{% if attempt.passed %}зачёт{% else %}пока не зачёт{% endif %}</span>
+</section>
+
+<ul class="result-list">
+  {% for item in attempt.details %}
+  <li class="{% if item.correct %}ok{% else %}bad{% endif %}">
+    <strong>{{ item.code }}</strong>
+    {% if item.topic %}<span>{{ item.topic }}</span>{% endif %}
+    <span>ваш ответ: {{ (item.selected or ['—'])|join(', ') }}</span>
+    <em>{% if item.correct %}верно{% else %}ошибка{% endif %}</em>
+  </li>
+  {% endfor %}
+</ul>
+<p class="muted">Верные варианты не показываем. При ошибке вернитесь к разбору в начале страницы и отметьте ответы ещё раз.</p>
+
+<div class="actions">
+  <a class="btn btn-ghost" href="{{ url_for('student.error_work', number=lesson.number) }}">К разбору и заданиям</a>
+  {% if state.error_work_passed %}
+  <a class="btn btn-primary" href="{{ url_for('student.lesson', number=lesson.number) }}">К занятию</a>
+  {% else %}
+  <a class="btn btn-primary" href="{{ url_for('student.error_work', number=lesson.number) }}">Ещё попытка</a>
+  {% endif %}
+</div>
+{% endblock %}

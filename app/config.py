@@ -152,6 +152,7 @@ class Config:
     STARTING_BALANCE_BYN = Decimal("2")
     TEST_PASS_PERCENT = float(os.getenv("TEST_PASS_PERCENT", "80"))
     PRACTICE_PASS_PERCENT = float(os.getenv("PRACTICE_PASS_PERCENT", "80"))
+    ERROR_WORK_PASS_PERCENT = float(os.getenv("ERROR_WORK_PASS_PERCENT", "80"))
 
     # Канонический адрес сайта без слэша на конце. Пусто — берётся адрес текущего запроса.
     PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")

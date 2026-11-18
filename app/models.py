@@ -50,6 +50,7 @@ class User(UserMixin, db.Model):
     theory_chats = db.relationship(
         "TheoryChatMessage", backref="user", cascade="all, delete-orphan"
     )
+    error_works = db.relationship("ErrorWork", backref="user", cascade="all, delete-orphan")
     balance_byn = db.Column(
         db.Numeric(12, 4), nullable=False, default=Decimal("2"), server_default="2"
     )
@@ -136,6 +137,9 @@ class LessonProgress(db.Model):
     practice_correct = db.Column(db.Integer, nullable=False, default=0)
     practice_total = db.Column(db.Integer, nullable=False, default=0)
     practice_passed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    # NULL — занятие сдано до появления работы над ошибками и её не требуем.
+    error_work_required = db.Column(db.Boolean, nullable=True)
+    error_work_passed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
@@ -196,6 +200,70 @@ class PracticeAttempt(db.Model):
     ai_verdict = db.Column(db.String(32), nullable=False, default="error")
     ai_feedback = db.Column(db.Text, nullable=False, default="")
     ai_raw = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class ErrorWork(db.Model):
+    """Подготовка и тест работы над ошибками по одному занятию."""
+
+    __tablename__ = "error_works"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "lesson_number", name="uq_error_work_user_lesson"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    lesson_number = db.Column(db.Integer, nullable=False, index=True)
+    required = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(20), nullable=False, default="not_required", index=True)
+    error_count = db.Column(db.Integer, nullable=False, default=0)
+    question_count = db.Column(db.Integer, nullable=False, default=0)
+    generation_no = db.Column(db.Integer, nullable=False, default=0)
+    errors_json = db.Column(db.JSON, nullable=True)
+    report = db.Column(db.JSON, nullable=True)
+    questions = db.Column(db.JSON, nullable=True)
+    best_score = db.Column(db.Float, nullable=True)
+    fail_note = db.Column(db.Text, nullable=False, default="")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    ready_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+    attempts = db.relationship(
+        "ErrorWorkAttempt",
+        backref="work",
+        cascade="all, delete-orphan",
+        order_by="ErrorWorkAttempt.created_at",
+    )
+
+    def _source_count(self, source: str) -> int:
+        rows = self.errors_json if isinstance(self.errors_json, list) else []
+        return sum(1 for item in rows if isinstance(item, dict) and item.get("source") == source)
+
+    @property
+    def test_error_count(self) -> int:
+        return self._source_count("test")
+
+    @property
+    def practice_error_count(self) -> int:
+        return self._source_count("practice")
+
+
+class ErrorWorkAttempt(db.Model):
+    __tablename__ = "error_work_attempts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    error_work_id = db.Column(
+        db.Integer, db.ForeignKey("error_works.id"), nullable=False, index=True
+    )
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    lesson_number = db.Column(db.Integer, nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False)
+    answers = db.Column(db.JSON, nullable=False)
+    details = db.Column(db.JSON, nullable=False)
+    correct_count = db.Column(db.Integer, nullable=False)
+    total_count = db.Column(db.Integer, nullable=False)
+    score = db.Column(db.Float, nullable=False)
+    passed = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
@@ -292,6 +360,14 @@ def ensure_schema() -> None:
             alters.append(
                 "ALTER TABLE lesson_progress "
                 f"ADD COLUMN theory_video_completed_at {coltype}"
+            )
+        if "error_work_required" not in cols:
+            alters.append("ALTER TABLE lesson_progress ADD COLUMN error_work_required BOOLEAN")
+        if "error_work_passed_at" not in cols:
+            coltype = "DATETIME" if db.engine.dialect.name == "sqlite" else "TIMESTAMP"
+            alters.append(
+                "ALTER TABLE lesson_progress "
+                f"ADD COLUMN error_work_passed_at {coltype}"
             )
     if "users" in names:
         cols = {c["name"] for c in inspector.get_columns("users")}

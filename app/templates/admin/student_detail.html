@@ -89,6 +89,9 @@
             {% if row.assignments %}
             <div class="cell-stack">
               <strong>{{ st.progress.practice_correct }} из {{ st.progress.practice_total }}</strong>
+              {% if st.error_work_required %}
+              <span class="muted">{% if st.error_work_passed %}работа над ошибками сдана{% else %}работа над ошибками не сдана{% endif %}</span>
+              {% endif %}
               <div class="chip-row">
                 {% for a in row.assignments if a.is_active %}
                 <a class="chip {% if a.is_correct %}ok{% endif %}" href="{{ url_for('admin.practice_attempts', assignment_id=a.id) }}">{{ a.task_code }}{% if a.is_correct %} ✓{% endif %}</a>

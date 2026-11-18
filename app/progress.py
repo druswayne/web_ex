@@ -436,6 +436,24 @@ def sync_assignments_after_content_change(lesson_number: int, band: str) -> None
         refresh_practice_progress(user, lesson_number)
 
 
+def mark_lesson_finished(user: User, progress: LessonProgress) -> None:
+    """Занятие засчитано: практики достаточно и работа над ошибками не держит следующее."""
+    if progress.completed_at is None:
+        progress.completed_at = utcnow()
+        log_activity(
+            user.id,
+            "lesson_complete",
+            lesson_number=progress.lesson_number,
+            details={
+                "correct": progress.practice_correct,
+                "total": progress.practice_total,
+                "error_work": progress.error_work_required is True,
+            },
+        )
+    unlock_next_if_needed(user, progress.lesson_number)
+    progress.updated_at = utcnow()
+
+
 def refresh_practice_progress(user: User, lesson_number: int) -> LessonProgress:
     rows = active_assignments(user.id, lesson_number)
     progress = get_or_create_progress(user.id, lesson_number)
@@ -446,14 +464,15 @@ def refresh_practice_progress(user: User, lesson_number: int) -> LessonProgress:
     percent = float(current_app.config.get("PRACTICE_PASS_PERCENT") or 80)
     if total and meets_percent(correct, total, percent) and not progress.practice_passed_at:
         progress.practice_passed_at = utcnow()
-        progress.completed_at = utcnow()
-        unlock_next_if_needed(user, lesson_number)
         log_activity(
             user.id,
-            "lesson_complete",
+            "practice_passed",
             lesson_number=lesson_number,
             details={"correct": correct, "total": total},
         )
+        from .error_work import begin_error_work
+
+        begin_error_work(user, lesson_number, progress)
     progress.updated_at = utcnow()
     grant_achievements(user)
     return progress
@@ -465,10 +484,15 @@ def lesson_state(user: User, lesson_number: int) -> dict[str, Any]:
     theory = theory_done(progress)
     test = test_done(progress)
     practice = practice_done(progress)
+    error_required = progress.error_work_required is True
+    error_passed = progress.error_work_passed_at is not None
+    finished = practice and not (error_required and not error_passed)
     if not unlocked:
         stage = "locked"
-    elif practice:
+    elif finished:
         stage = "done"
+    elif practice:
+        stage = "errors"
     elif test:
         stage = "practice"
     elif theory:
@@ -482,6 +506,8 @@ def lesson_state(user: User, lesson_number: int) -> dict[str, Any]:
         "theory": theory,
         "test": test,
         "practice": practice,
+        "error_work_required": error_required,
+        "error_work_passed": error_passed,
         "video": bool(progress.theory_video_completed_at),
     }
 
